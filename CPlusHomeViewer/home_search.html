@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>家の記録 検索</title>
+<script id="theme-init">
+// Light or dark before the page draws, so a dark page does not flash white while the records load.
+// ダーク unless the viewer chose otherwise; 自動 follows the PC's setting (and its later changes).
+// The choice stays in this browser only.
+window.cplusTheme = (function () {
+  const KEY = "cplusHomeSearchTheme";
+  const DEFAULT = "dark";
+  const media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  let choice = DEFAULT;
+  try { choice = localStorage.getItem(KEY) || DEFAULT; } catch (e) { /* storage unavailable: the default */ }
+  function apply() { document.documentElement.dataset.theme = choice === "auto" ? (media && media.matches ? "dark" : "light") : choice; }
+  if (media && media.addEventListener) media.addEventListener("change", apply);
+  apply();
+  return {
+    get choice() { return choice; },
+    set(value) {
+      choice = value; apply();
+      try { localStorage.setItem(KEY, value); } catch (e) { /* storage unavailable: the choice lasts for this visit */ }
+    },
+  };
+})();
+// 条件を隠す, in the narrow layout only (the rules below). Shown unless the viewer hid them; kept in this
+// browser only, as the theme is, and set before the page draws so the panel does not flash in and out.
+window.cplusConds = (function () {
+  const KEY = "cplusHomeSearchConds";
+  let hidden = false;
+  try { hidden = localStorage.getItem(KEY) === "hidden"; } catch (e) { /* storage unavailable: shown */ }
+  function apply() { document.documentElement.dataset.conds = hidden ? "hidden" : "shown"; }
+  apply();
+  return {
+    get hidden() { return hidden; },
+    set(value) {
+      hidden = !!value; apply();
+      try { localStorage.setItem(KEY, hidden ? "hidden" : "shown"); } catch (e) { /* storage unavailable: for this visit */ }
+    },
+  };
+})();
+// The FHD form, for a window too low for the panel of conditions as it is: the panel is closer (two dropdowns to a
+// line, their labels over them, the hint in a ? button) and the kinds of box stand at the top of the results
+// (home_search.js placeKinds). Decided here only: the rules read data-form, the page asks window.cplusForm.
+// 1547px: the lowest window in which the panel holds its fixed height (1288px, .builderpanel) without scrolling,
+// measured with a full set of records (Yu Gothic UI) - 1510px with the header on one line (1920px wide), 1547px with
+// it on two (960px and 901px wide): the panel is the window less the header and 117px, so 1288 + 117 + 142. Over 900px wide only: up to that, the page keeps its one column.
+// 1288px is a fixed height (.builderpanel says why); what the panel holds here is at most about 1065px.
+window.cplusForm = (function () {
+  const media = window.matchMedia ? window.matchMedia("(900px < width) and (height < 1547px)") : null;
+  const listeners = [];
+  function apply() { document.documentElement.dataset.form = media && media.matches ? "fhd" : "tall"; }
+  if (media && media.addEventListener) media.addEventListener("change", () => { apply(); for (const fn of listeners) fn(); });
+  apply();
+  return {
+    get fhd() { return !!(media && media.matches); },
+    onChange(fn) { listeners.push(fn); },
+  };
+})();
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f4f6f7; --panel: #ffffff; --ink: #1d2a2e; --sub: #5b6b70; --line: #d9e1e3; --field: #ffffff; --th: #fafcfc;
+    --accent: #1e828c; --accent-soft: #e3f2f3; --warn: #b35c00; --warn-soft: #fff1e0; --remove: #c0392b; --hit: #c62828; --hit-soft: #fdeceb;
+    --shadow: rgba(0, 0, 0, .18);
+    --font: "Yu Gothic UI", "Meiryo", "Hiragino Sans", system-ui, sans-serif;
+    --head: 56px; /* replaced by the measured height of the header and the tabs (#top) */
+    /* 一番上へ／一番下へ (#jump). --jump is replaced by their measured height; until then it is what
+       the rules below make it: two buttons of 13px text at line-height 1.5, 6px padding and a 1px border
+       (33.5px each), and the 6px between them. --jump-at is how far they sit from the bottom-left corner. */
+    --jump: 73px;
+    --jump-at: 16px;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #121719; --panel: #1b2225; --ink: #e4eaec; --sub: #9aa9ae; --line: #33414a; --field: #12181b; --th: #20292d;
+    --accent: #56c1cb; --accent-soft: #163b40; --warn: #f2a453; --warn-soft: #3b2a15; --remove: #e25c4f; --hit: #ff7a70; --hit-soft: #401d1b;
+    --shadow: rgba(0, 0, 0, .5);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font); }
+  /* The header and the tabs stay at the top together, whichever tab is shown; --head is the two. */
+  .pinned { position: sticky; top: 0; z-index: 5; }
+  /* A box chosen under the pinned part (Tab, Shift+Tab, focus()) is scrolled out from under it. */
+  html { scroll-padding-top: calc(var(--head) + 8px); }
+  header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 17px; margin: 0; }
+  .summary, .source { color: var(--sub); font-size: 13px; }
+  .source { overflow-wrap: anywhere; }
+  .notice { font-size: 13px; color: var(--accent); font-weight: 600; }
+  .spacer { flex: 1; }
+  /* 組 and 表示 always on one line together */
+  .picks { display: inline-flex; gap: 16px; white-space: nowrap; }
+  /* Trouble reading the records: across the header, never looking like an empty result. */
+  .alert { flex-basis: 100%; font-size: 18px; font-weight: 700; color: var(--hit); background: var(--hit-soft); border: 2px solid var(--hit); border-radius: 8px; padding: 12px 16px; }
+  .alert .where { display: block; font-size: 14px; font-weight: 600; margin-top: 4px; overflow-wrap: anywhere; }
+  /* Where the records folder is: shown while the page has to ask, or once 変える is pressed. */
+  .folderform { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; font-size: 13px; }
+  .folderform input[type=text] { flex: 1 1 360px; width: auto; min-width: 0; }
+  .folderform .note { flex-basis: 100%; color: var(--sub); overflow-wrap: anywhere; }
+  .folderform .note.said { color: var(--warn); font-weight: 600; }
+  button.small { padding: 2px 8px; font-size: 12px; }
+  .warnbar { flex-basis: 100%; font-size: 13px; color: var(--warn); background: var(--warn-soft); border: 1px solid var(--warn); border-radius: 6px; padding: 6px 12px; overflow-wrap: anywhere; }
+  [hidden] { display: none !important; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+  /* A button that cannot be pressed now ( 整理削除 with no older record ) looks it: pale, and no pointer. Its title says why. */
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  nav.tabs { display: flex; gap: 4px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  nav.tabs button { border: none; border-bottom: 3px solid transparent; border-radius: 0; padding: 10px 14px; background: none; }
+  nav.tabs button.on { border-bottom-color: var(--accent); color: var(--accent); font-weight: 600; }
+  main { padding: 16px; }
+  .layout { display: grid; grid-template-columns: 430px 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  /* The FHD form (data-form, set in the head). In the ordinary form, a window under 1547px high makes the panel of conditions scroll (in a
+     window of 1920x950, 1047px of what it holds in the ordinary list, in 728px). Here
+     the panel is 408px wide whatever the window's width and only the results widen; アイテム名 to 家と階 have 72px labels
+     and the houses and floors are one line; the dropdowns are two to a
+     line with their labels over them (.pick, home_search.js labelled); the hint is in the ? button's title
+     (home_search.js drawPickers); 一番上へ／一番下へ are ▲ and ▼ side by
+     side. The kinds of box stand at the top of the results (#kindsTop, home_search.js placeKinds), one line in a window
+     1920px wide: measured in a panel with the ▲ and ▼ side by side, what is searched by had 541px in a
+     960x950 window and 578px in 1920x950 - the kinds of box, 173px with
+     their frame's margin, left in the panel, it would not have fitted. Outside this form none of these rules applies:
+     .pick is display: contents (the label and what it labels are the grid's cells) and ? is not shown. */
+  .pick { display: contents; }
+  .hintbtn { display: none; }
+  :root[data-form="fhd"] .layout { grid-template-columns: 408px minmax(0, 1fr); }
+  :root[data-form="fhd"] .builderpanel { padding: 12px; }
+  :root[data-form="fhd"] .builderbody h2 { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  :root[data-form="fhd"] .hintbtn { display: block; margin-left: auto; width: 24px; height: 24px; padding: 0; border-radius: 12px; font-size: 12px; color: var(--sub); }
+  :root[data-form="fhd"] #hint { display: none; }
+  :root[data-form="fhd"] .builder.lead { grid-template-columns: 72px minmax(0, 1fr); gap: 6px 8px; }
+  :root[data-form="fhd"] .builder .lab { font-size: 12px; }
+  :root[data-form="fhd"] #q, :root[data-form="fhd"] #lineq { padding: 4px 8px; font-size: 13px; }
+  :root[data-form="fhd"] .housebox { display: flex; flex-wrap: wrap; gap: 4px; padding: 0; border: none; background: none; }
+  :root[data-form="fhd"] .housebox .checks { display: contents; }
+  :root[data-form="fhd"] .housebox .checks + .checks > :first-child { margin-left: 6px; }
+  :root[data-form="fhd"] .housebox label, :root[data-form="fhd"] #pickers .checks label { font-size: 12px; padding: 1px 7px; }
+  :root[data-form="fhd"] #pickers { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; }
+  :root[data-form="fhd"] #pickers > .lab:empty { display: none; }
+  :root[data-form="fhd"] .pick { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  :root[data-form="fhd"] .pick .lab { text-align: left; font-size: 11px; }
+  :root[data-form="fhd"] #pickers select { padding: 4px 6px; font-size: 13px; }
+  :root[data-form="fhd"] #pickers .sec { font-size: 12px; padding-top: 6px; margin-top: 0; }
+  :root[data-form="fhd"] #pickers .checks.cols { gap: 4px; }
+  :root[data-form="fhd"] #pickers .framebox { padding: 4px 6px; }
+  :root[data-form="fhd"] #pickers .framehead { font-size: 11px; margin-bottom: 2px; }
+  :root[data-form="fhd"] .rowcap { font-size: 11px; margin: 4px 0 2px; }
+  :root[data-form="fhd"] #pickers .filternow { font-size: 12px; }
+  :root[data-form="fhd"] .kindbox { margin: 0 0 10px; }
+  :root[data-form="fhd"] .kindrow { display: flex; flex-wrap: wrap; gap: 5px; }
+  :root[data-form="fhd"] .kindrow button { width: auto; font-size: 12px; padding: 4px 10px; }
+  :root[data-form="fhd"] .jump { flex-direction: row; }
+  :root[data-form="fhd"] .jumpword { display: none; }
+  /* The narrow layout, between the one column above and 1200px, with 条件を隠す (home_search.js), which hides the
+     panel and gives the results the whole width; above 1200px the panel is always there and the button is not.
+     Measured in a browser with a full set of records (Yu Gothic UI): with the panel at 430px, name lines in the ordinary
+     list wrapped from 1180px down, more of them at 1040px. The panel is 408px, at which no button in it has its words
+     cut to 「…」, whichever kind is pressed (the widest is the locker's 「レンジャーの」, cut at 380px).
+     Written as a range, so it starts right where the one column ends: at a display scale of 125% or 150% a window
+     can be 900.5px wide, which (min-width: 901px) left to the wide layout. */
+  .condstoggle { display: none; }
+  @media (900px < width < 1200px) {
+    .layout { grid-template-columns: 408px 1fr; }
+    .condstoggle { display: inline-block; }
+    :root[data-conds="hidden"] .layout { grid-template-columns: 1fr; }
+    :root[data-conds="hidden"] .builderpanel { display: none; }
+    /* Hidden, 一番上へ／一番下へ are ▲ and ▼ alone, and the results keep a strip on their left for them, so
+       they cover no card. Measured in a 975px window (Yu Gothic UI): ▲ and ▼ alone are 39px wide at 16px
+       from the left, their right edge at 55px; 51px here starts the cards at 67px, 12px clear of them - as far as the
+       panel of conditions ends above them. */
+    :root[data-conds="hidden"] .jumpword { display: none; }
+    :root[data-conds="hidden"] .resultscol { padding-left: 51px; }
+    /* Hidden in the FHD form as well - the results the whole width, and ▲ and ▼ one above the other (the form puts
+       them side by side under the panel shown). The FHD form's rules for .layout and .jump are as specific as the ones
+       above, so these name both states and win by being more specific, not by where they stand. */
+    :root[data-form="fhd"][data-conds="hidden"] .layout { grid-template-columns: 1fr; }
+    :root[data-form="fhd"][data-conds="hidden"] .jump { flex-direction: column; }
+  }
+  /* It ends 12px above 一番上へ／一番下へ, which sit below it in the bottom left. */
+  /* The panel's height is fixed (it does not shrink to what it holds), and it is
+     a column of two: what is searched by takes what is left and scrolls on its own, and the kinds of box sit under it,
+     at the bottom edge, never scrolled. It is held (sticky) as far below the header as it stands before the page is
+     scrolled - main's padding, 16px - so that scrolling the page does not move it, and the kinds of box with it, by
+     the difference; its height takes those 16px and the 12px above 一番上へ off.
+     And it is no taller than 1288px: a fixed number, not what it holds now - a height that followed what it holds
+     would move the kinds of box again whenever a kind was pressed. 1288px is a height kept from an earlier layout of this
+     page, so that the panel stands where it stood. What this panel holds is less: measured with a full set of records (Yu Gothic UI), the frame (30px), what
+     is searched by and the kinds of box came to 1047px / 1065px in the ordinary list at 430px and at the narrow
+     layout's 408px, 1007px with the locker's, the rest less - so a window taller than that leaves a gap of up to about
+     220px between what is searched by and the kinds of box. */
+  .builderpanel { position: sticky; top: calc(var(--head) + 16px); height: min(calc(100vh - var(--head) - 28px - var(--jump) - var(--jump-at)), 1288px); display: flex; flex-direction: column; overflow: hidden; }
+  .builderbody { flex: 1 1 auto; min-height: 0; overflow: auto; }
+  /* 選択した検索条件 and the count / 並び順 row stay under the header and the tabs while the results scroll. */
+  .stickyconds { position: sticky; top: var(--head); z-index: 4; background: var(--bg); padding: 12px 0 10px; margin-top: -12px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .panel h2 { font-size: 14px; margin: 0 0 8px; color: var(--sub); font-weight: 600; }
+  .builder { display: grid; grid-template-columns: 104px 1fr; gap: 8px 10px; align-items: center; }
+  .builder + .builder { margin-top: 8px; }
+  .builder .lab { text-align: right; color: var(--sub); font-size: 13px; }
+  .builder .sec { grid-column: 1 / -1; font-weight: 700; color: var(--sub); font-size: 13px; border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 4px; }
+  input[type=text], input[type=number], select { font: inherit; width: 100%; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--field); color: var(--ink); }
+  input[type=number] { width: 84px; padding: 4px 6px; }
+  .checks { display: flex; flex-wrap: wrap; gap: 6px; }
+  .checks label { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 14px; cursor: pointer; user-select: none; font-size: 13px; }
+  .checks label.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  /* A filter's piece across the whole panel, the houses' buttons square and bold, and the line of what is chosen */
+  .builder .wide { grid-column: 1 / -1; }
+  .checks label.housechip { font-weight: 700; border-radius: 4px; }
+  .filternow { font-size: 13px; color: var(--sub); }
+  /* A frame round the kinds of box (at the bottom edge of the panel), round 家と階 (the houses'
+     buttons in one row, square and bold, and the floors' in the row under it), and round each item of the
+     locker's filter (its heading first; the level's frame holds two rows, each with its own small caption over it) */
+  .framebox, .housebox { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: var(--th); }
+  .framebox .checks + .checks, .housebox .checks + .checks { margin-top: 6px; }
+  .framehead { font-size: 12px; font-weight: 700; color: var(--sub); margin-bottom: 4px; }
+  /* A filter's row in a grid of a fixed number of columns (home_search.js COLUMNS, gridRow): each button as wide
+     as its cell, its words in the middle, cut with 「…」 where they do not fit (whole in its title); a row's small caption
+     over it, not beside it (the locker's 〜の and 段階, the chosen skill group's name) */
+  .checks.cols { display: grid; }
+  .checks.cols label { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
+  .rowcap { font-size: 12px; color: var(--sub); margin: 6px 0 4px; }
+  .kindbox { flex: none; margin-top: 10px; }
+  .houses { display: flex; flex-direction: column; gap: 6px; }
+  .hint { color: var(--sub); font-size: 12px; margin-top: 10px; }
+  /* One button for each kind of cabinet in the records (home_search.js drawKinds). In a grid - its columns, its
+     rows and each button's cell are set there (KIND_GRID) - each button as wide as its column. */
+  .kindrow { display: grid; gap: 6px; }
+  .kindrow button { width: 100%; min-width: 0; }
+  /* Pressed: the red the page already uses for what the search asked for (.chip.hit), so that a list of
+     one kind of container cannot be taken for the ordinary one. Measured: --hit on --hit-soft is 4.92:1
+     in the light theme and 5.87:1 in the dark, both over the 4.5 asked of text this size (the accent on
+     the accent ground was 3.95:1 in the light theme, which is why that pair is not used for text).
+     The weight of the words is not changed (as .checks label.on): made bold, the pressed button would grow wider
+     and move the buttons after it in its row by 3-4px, and a button that moves under the pointer is hard to press. */
+  .kindrow button.on { background: var(--hit-soft); border-color: var(--hit); color: var(--hit); }
+  .conds { list-style: none; margin: 0; padding: 0; max-height: 40vh; overflow: auto; }
+  /* What is being searched for must be easy to pick out: 14px words on a thin rule, right above the 28px red
+     count, were not. Each condition is a card of its own, on the same soft
+     ground with the same accent border as a pressed container button, and its words are 22px.
+     The words keep the colour and the weight of ordinary text on purpose: the count and the × are both
+     red already, and a third red in the same panel reads as "this is about to be removed".
+     Larger rows mean fewer at once, which is the price of reading them at a glance. Measured in a 1000px window, where
+     max-height is 400px: a row with a number box is 61px and sits on a 67px pitch, so 6 are in view; a row
+     without one is 51px on a 57px pitch, so 7 are. */
+  .conds li { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center;
+    padding: 8px 10px; margin-bottom: 6px; font-size: 22px;
+    background: var(--hit-soft); border: 1px solid var(--hit); border-radius: 6px; }
+  .conds li.none { display: block; background: none; border: none; padding: 6px 4px; margin: 0; color: var(--sub); font-size: 13px; }
+  .conds .x { width: 26px; height: 26px; border-radius: 50%; background: var(--remove); color: #fff; border: none; padding: 0; font-size: 13px; line-height: 26px; text-align: center; }
+  .conds .grp { color: var(--sub); font-size: 12px; margin-left: 8px; }
+  .conds .num { display: flex; align-items: center; gap: 4px; font-size: 22px; color: var(--sub); }
+  .results-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .results-head .n { font-weight: 600; }
+  .results-head .n .big { font-size: 28px; font-weight: 700; color: var(--hit); margin-right: 3px; } /* the count, about 10pt over the 14px text */
+  .item { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer;
+    --name-size: 15px; --name-weight: 700; --guide-w: 104px; }
+  .item:hover { border-color: var(--accent); }
+  /* ゲームで案内 is held in the card's top right corner (.guide below), and the name and its marks wrap in the
+     room left of it. --guide-w: the button measured 97.3px wide with its words in Yu Gothic UI 14px, and a
+     little more for Meiryo. min-height is the button's own height (14px at line-height 1.5, 6px padding and a 1px border:
+     35px, measured), so where it is never runs under it. */
+  .item .top { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline;
+    position: relative; padding-right: calc(var(--guide-w) + 10px); min-height: 35px; }
+  .item .name { font-weight: var(--name-weight); font-size: var(--name-size); }
+  /* A scroll's grade and how many: on those rows this is what is being looked for, so both read as
+     big as the name and in the red the page uses for what the search asked for, with the count in a
+     frame of its own so the two never run together.
+     Measured on the card ground: --hit is 5.62:1 in the light theme and 6.35:1 in the dark; the count
+     on --hit-soft is 4.92:1 and 5.87:1. The ordinary items' meta below is untouched. */
+  .item .bookgrade, .item .bookcount { color: var(--hit); font-size: var(--name-size); font-weight: var(--name-weight); }
+  .item .bookcount { border: 1px solid var(--hit); background: var(--hit-soft); border-radius: 6px; padding: 0 8px; }
+  /* A map or a SOS in a Davies' locker: its facet, status and coordinates in the quiet colour; a row
+     of no shape marked in the colour the page warns in, as 同名 is. */
+  .item .lockerinfo { color: var(--sub); font-size: 13px; }
+  .item .lockerodd { color: var(--warn); border: 1px solid var(--warn); border-radius: 6px; padding: 0 6px; font-size: 12px; font-weight: 600; }
+  /* A locker not read to the end, in red and a little larger, so that it cannot be missed: on its rows' cards and in a
+     line above the results, larger and bolder than the words round it and in the red the page uses for what
+     needs the player - the same pairs as the scroll book's count above: --hit on the card 5.62:1 (light) and
+     6.35:1 (dark), on --hit-soft 4.92:1 and 5.87:1. */
+  .item .lockershort { margin-top: 4px; font-size: 16px; font-weight: 700; color: var(--hit); }
+  .alertbar { margin-bottom: 8px; font-size: 16px; font-weight: 700; color: var(--hit); background: var(--hit-soft); border: 2px solid var(--hit); border-radius: 8px; padding: 8px 12px; overflow-wrap: anywhere; }
+  .item .guide { position: absolute; top: 0; right: 0; width: var(--guide-w); white-space: nowrap; background: var(--accent); border-color: var(--accent); color: var(--panel); font-weight: 600; }
+  .item .guide:hover { filter: brightness(1.1); }
+  .warnbar input[type=text] { margin-top: 6px; }
+  .item .twin { color: var(--warn); border: 1px solid var(--warn); border-radius: 6px; padding: 0 6px; font-size: 12px; font-weight: 600; }
+  /* An item from an older record of its jewel box, and the page a jewel box's item was seen on: the same
+     shape as 同名, in the quiet colour. */
+  .item .old, .item .page { color: var(--sub); border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; font-size: 12px; }
+  .oldnote { margin-bottom: 8px; }
+  .item .meta { color: var(--sub); font-size: 12px; }
+  .item .where { margin-top: 3px; font-size: 13px; }
+  .item .where b { color: var(--accent); font-weight: 600; }
+  .item .body { min-width: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px 6px; margin-top: 7px; align-items: center; }
+  .chip { border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 1px 8px; font-size: 12px; }
+  .chip.hit { border-color: var(--hit); background: var(--hit-soft); color: var(--hit); font-weight: 700; font-size: 14px; padding: 2px 10px; }
+  .detail { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--line); color: var(--sub); font-size: 12px; }
+  .more { display: block; margin: 8px auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--sub); font-weight: 600; background: var(--th); }
+  .warn { color: var(--warn); }
+  .tablewrap { overflow-x: auto; }
+  /* 名前の設定's table - the note under a choice made beforehand, and a character's older numbers, smaller */
+  #charAssign .hint { margin-top: 4px; }
+  #charAssign tr.older td { font-size: 12px; color: var(--sub); padding-top: 3px; padding-bottom: 3px; }
+  .names-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .row { display: flex; gap: 8px; align-items: center; margin: 4px 0; }
+  .row span.lab { min-width: 70px; color: var(--sub); font-size: 13px; }
+  /* A house's range in 名前の設定 - its label beside the first of its lines, and no line broken */
+  .row.range { align-items: flex-start; }
+  .rangelines div { white-space: nowrap; }
+  /* The buttons that copy a pair's houses for the game, one for each pair */
+  .arearow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .empty { color: var(--sub); padding: 24px; text-align: center; }
+  .jump { position: fixed; left: var(--jump-at); bottom: var(--jump-at); display: flex; flex-direction: column; gap: 6px; z-index: 10; }
+  .jump button { box-shadow: 0 2px 8px var(--shadow); font-size: 13px; }
+  .theme { display: inline-flex; align-items: center; gap: 6px; color: var(--sub); font-size: 13px; }
+  .theme select { width: auto; padding: 4px 8px; }
+</style>
+</head>
+<body>
+<div class="pinned" id="top">
+<header>
+  <h1>家の記録 検索</h1>
+  <span class="summary" id="summary"></span>
+  <button id="tidy" title="同じ箱の古い記録を消します。消す前に、消しても表示が変わらないことを確かめます">整理削除</button>
+  <span class="notice" id="notice"></span>
+  <span class="spacer"></span>
+  <span class="source" id="source"></span>
+  <button class="small" id="folderChange" title="記録のフォルダの場所を変えます">変える</button>
+  <span class="picks">
+  <label class="theme">組
+    <select id="pair" title="アカウントとシャードの組。選んだ組の記録だけを出します"></select>
+  </label>
+  <label class="theme">表示
+    <select id="theme">
+      <option value="dark">ダーク</option>
+      <option value="light">ライト</option>
+      <option value="auto">自動（パソコンの設定）</option>
+    </select>
+  </label>
+  </span>
+  <div class="alert" id="alert" hidden></div>
+  <div class="folderform" id="folderForm" hidden>
+    <label for="folderPath">記録のフォルダの場所</label>
+    <input type="text" id="folderPath" placeholder="例: C:\Program Files (x86)\Electronic Arts\Ultima Online Enhanced">
+    <button id="folderSet">決める</button>
+    <span class="note">ゲームのフォルダでも、その中の logs\CPlusExport でもかまいません。エクスプローラーのアドレス欄からコピーして貼ってください。</span>
+    <span class="note said" id="folderMsg"></span>
+  </div>
+  <div class="warnbar" id="unreadable" hidden></div>
+  <div class="warnbar" id="saveError" hidden></div>
+  <div class="warnbar" id="guideCopy" hidden></div>
+  <div class="warnbar" id="unassigned" hidden></div>
+  <div class="warnbar" id="unlearned" hidden></div>
+  <div class="warnbar" id="tidyBar" hidden></div>
+</header>
+<nav class="tabs">
+  <button data-tab="search" class="on">検索</button>
+  <button data-tab="todo">開きに行くリスト</button>
+  <button data-tab="names">名前の設定</button>
+</nav>
+</div>
+<main>
+  <section id="tab-search">
+    <div class="layout">
+      <aside class="panel builderpanel" id="condsPanel">
+        <!-- The panel is two parts - what is searched by, which scrolls, and under it the kinds of box, held
+             to the panel's bottom edge. The panel's height is fixed, so the kinds of box stay where they are whichever
+             button is pressed and however far the part above is scrolled (they would otherwise move with the filters' height).
+             In the FHD form the kinds of box are moved to #kindsTop (home_search.js placeKinds). -->
+        <div class="builderbody" id="builderbody">
+        <h2>検索条件（ゲームのベンダー検索と同じ並び）<button id="hintBtn" class="hintbtn" aria-label="使い方">?</button></h2>
+        <div class="builder lead">
+          <span class="lab">アイテム名</span>
+          <input type="text" id="q" placeholder="名前・元の品名（例: デスエッセンス / レザーグローブ）">
+          <span class="lab">説明の言葉</span>
+          <input type="text" id="lineq" placeholder="一覧に無いプロパティ（例: 保険 / Blessed / キラー）">
+          <span class="lab">家と階</span>
+          <div class="houses" id="houses"></div>
+        </div>
+        <div class="builder" id="pickers"></div>
+        <div class="hint" id="hint">一覧から選ぶと右の「選択した検索条件」に並びます。数字を入れると、その数字以上の物だけ。選んだ条件はすべて満たす物だけが出ます。一覧に無いプロパティは「説明の言葉」に入れて探します（空白で区切ると全部を含む物）。</div>
+        </div>
+        <!-- Hidden while the records hold no such box. -->
+        <div class="framebox kindbox" id="kindbox" hidden>
+          <div class="framehead">箱の種類</div>
+          <div class="kindrow" id="kinds"></div>
+        </div>
+      </aside>
+      <div class="resultscol">
+        <div class="stickyconds">
+          <div id="kindsTop"></div>
+          <div class="panel">
+            <div class="results-head">
+              <h2 id="condsTitle" style="margin:0">選択した検索条件</h2>
+              <span class="spacer"></span>
+              <button id="condsToggle" class="condstoggle">条件を隠す</button>
+              <button id="clear">条件の消去</button>
+            </div>
+            <ul class="conds" id="conds"></ul>
+          </div>
+          <div class="results-head" style="margin-top:10px">
+            <span class="n" id="count"></span>
+            <span class="spacer"></span>
+            <label>並び順
+              <select id="sort" style="width:auto"></select>
+            </label>
+          </div>
+        </div>
+        <div class="warnbar oldnote" id="oldRecords" hidden></div>
+        <div class="alertbar" id="lockerShort" hidden></div>
+        <div id="results"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-todo" hidden>
+    <div class="panel">
+      <h2>中身がまだ記録されていない入れ物</h2>
+      <div class="hint">記録した箱の中にある入れ物のうち、まだ開いていない物です。開いて閉じれば記録されます。</div>
+      <div class="tablewrap"><table id="todo"></table></div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h2>記録しきれていない宝石箱</h2>
+      <div class="hint">宝石箱は、開いている間に見えたページの品だけを記録します。ゲームでその宝石箱を開き、ページを全部めくってから閉じると記録し直されます。</div>
+      <div class="tablewrap"><table id="jewels"></table></div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h2>最後まで読み込まれていないスクロールブック</h2>
+      <div class="hint">本は、開いている間に開いた技能のページだけを記録します。何回かに分けて開いた分は重ねて数えます。ゲームで本を開き、まだ読んでいない技能のページを開いてください。スクロールを出し入れしたときは、その技能のページを開いて読み込み直してください。</div>
+      <div class="tablewrap"><table id="books"></table></div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h2>要確認（「内容」の数と記録した数が合わない箱）</h2>
+      <div class="hint">本に綴じた証書や、「内容」の行を持たない入れ物があると合わないことがあります。目安です。</div>
+      <div class="tablewrap"><table id="mismatch"></table></div>
+    </div>
+  </section>
+
+  <section id="tab-names" hidden>
+    <div class="panel">
+      <div class="row">
+        <h2 style="margin:0">付けた名前の保存先: <span class="source" id="namesFile">（読み出し役から受け取ります）</span></h2>
+        <span class="spacer"></span>
+        <span class="summary" id="namesState"></span>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px" id="areaPanel" hidden>
+      <h2>家の範囲をゲームへ</h2>
+      <div class="hint">組の家の範囲を 1 行でコピーします。ゲームで家の記録アイコンを右クリック →「範囲を貼る」の窓に貼って Enter を押すと、そのキャラクターの家として、ここと同じ番号で登録されます（記録も ON になります）。家が増えたら、コピーと貼り付けをもう一度。</div>
+      <div class="arearow" id="areaCopy"></div>
+    </div>
+    <div class="names-grid" style="margin-top:16px" id="housenames"></div>
+    <div class="panel" style="margin-top:16px">
+      <h2>キャラクターの割り当て</h2>
+      <div class="hint">記録に入っている番号が、どのアカウント・シャードのキャラクターかを決めます。
+        候補は名前から探しますが、<b>押して決めるまで確定しません</b>（違う組に入ると気づけないため）。
+        決めたあとは番号だけで照合します。</div>
+      <div class="hint" style="margin-top:6px" id="legacyRow">番号の無い古い記録は、ここで選んだ組のものとして扱います:
+        <select id="legacyPair" style="width:auto"></select></div>
+      <div class="tablewrap" style="margin-top:8px"><table id="charAssign"></table></div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h2>箱の名前（刻印の無い箱）</h2>
+      <div class="hint">同じ場所から開いた箱は位置では見分けられないので、ここで名前を付けます。刻印のある箱は刻印を使います。</div>
+      <input type="text" id="boxq" placeholder="箱を探す（箱の種類・番号・家）" style="margin-top:8px">
+      <div class="tablewrap"><table id="boxnames"></table></div>
+    </div>
+  </section>
+</main>
+<div class="jump" id="jump">
+  <button id="toTop" title="一番上へ">▲<span class="jumpword"> 一番上へ</span></button>
+  <button id="toBottom" title="一番下へ">▼<span class="jumpword"> 一番下へ</span></button>
+</div>
+<script src="home_search_groups.js"></script>
+<script src="home_search_parse.js"></script>
+<script src="home_search.js"></script>
+</body>
+</html>

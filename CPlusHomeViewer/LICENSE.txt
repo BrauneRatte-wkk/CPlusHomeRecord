@@ -1,0 +1,14 @@
+CPlusHomeRecord（家の記録）利用条件
+
+作者: BrauneRatte
+
+1. このソフト（同梱のすべてのファイル）は無料で使えます。
+2. 使う・調べる・改変する・配り直すのは自由です。改変したものを配るときも同じです。
+3. 販売はできません。このソフトや、これを改変したものを、有料で配ったり、有料の品に含めたりしないでください。
+4. 無保証です。このソフトを使ったことで起きたどんなことにも、作者は一切の責任を負いません。記録のファイルは、必要なら自分でコピーしてください。Ultima Online の規約についての判断も各自で行い、自己責任で使ってください。
+5. サポートはありません。
+6. このソフトは、CLifeUI の作者様・Electronic Arts・Broadsword とは関係ありません。
+7. このソフトは、Anthropic の Claude Code（Claude Opus 5 と Claude Opus 5.5）でコードをすべて作りました。作者は仕様を決めて、ゲームでの動作を確かめました。
+
+Ultima Online に関するコピーライトとリーガル情報
+(C) Electronic Arts Inc. Electronic Arts, EA, EA GAMES, the EA GAMES logo, Ultima, the UO logo and Britannia are trademarks or registered trademarks of Electronic Arts Inc. in the U.S. and/or other countries. All rights reserved.

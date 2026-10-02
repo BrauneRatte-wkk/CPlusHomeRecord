@@ -1,0 +1,274 @@
+<Interface xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../Interface.xsd">
+
+	<!--
+		The home search guide ( CPlusHomeGuide.lua ): its window, the arrow it puts
+		over the box, and the frame it puts round the next slot. Each is made
+		once, when first needed, and shown, hidden and moved after that.
+	-->
+
+	<Assets>
+		<!--
+			A white ring, 56 across in the middle of 64, transparent inside and
+			out; CPlusHomeGuide.lua tints it.
+		-->
+		<Texture name="CPlusHomeGuideFrameTexture" file="Textures/guide_frame.dds" />
+	</Assets>
+
+	<Windows>
+
+		<!--
+			The window the guide text is pasted into ( CPlusHomeGuide.toggle opens
+			and closes it ). Esc in the box, a right click or the close button
+			closes it, and closing it ends the guide ( CPlusHomeGuide.close );
+			Enter starts the guide.
+
+			244 high: the state lines end at 194 ( $parentState ), and the button
+			under them, 39 high ( UO_Default_Medium_Select_Button, Default
+			CoreWindowTemplates.xml:187 ) and 6 above the bottom, starts at 199.
+		-->
+		<Window name="CPlusHomeGuideWindow" movable="true" handleinput="true" savesettings="true">
+			<Size>
+				<AbsPoint x="440" y="244" />
+			</Size>
+			<Anchors>
+				<Anchor point="top" relativePoint="top" relativeTo="">
+					<AbsPoint x="0" y="160" />
+				</Anchor>
+			</Anchors>
+			<EventHandlers>
+				<EventHandler event="OnRButtonUp" function="CPlusHomeGuide.close" />
+			</EventHandlers>
+			<Windows>
+
+				<FullResizeImage name="$parentBackground" alpha="0.9" inherits="UO_Simple_Black_Background" layer="background">
+					<Anchors>
+						<Anchor point="topleft" relativePoint="topleft" relativeTo="" />
+						<Anchor point="bottomright" relativePoint="bottomright" relativeTo="" />
+					</Anchors>
+				</FullResizeImage>
+
+				<HorizontalResizeImage name="$parentTitleBar" inherits="UO_Default_Title_Bar" handleinput="true">
+					<Anchors>
+						<Anchor point="topleft" relativePoint="topleft" />
+						<Anchor point="topright" relativePoint="topright" />
+					</Anchors>
+					<EventHandlers>
+						<EventHandler event="OnRButtonUp" function="CPlusHomeGuide.close" />
+					</EventHandlers>
+				</HorizontalResizeImage>
+
+				<Label name="$parentTitle" font="MgenPlus_14" maxchars="32" textalign="center" handleinput="false" layer="popup">
+					<Size>
+						<AbsPoint x="380" y="18" />
+					</Size>
+					<Anchors>
+						<Anchor point="topleft" relativePoint="topleft">
+							<AbsPoint x="25" y="4" />
+						</Anchor>
+						<Anchor point="topright" relativePoint="topright">
+							<AbsPoint x="-25" y="4" />
+						</Anchor>
+					</Anchors>
+				</Label>
+
+				<Button name="$parentClose" inherits="UO_Default_Close_Button" layer="popup">
+					<Anchors>
+						<Anchor point="topright" relativePoint="topright" relativeTo="$parentTitleBar" />
+					</Anchors>
+					<EventHandlers>
+						<EventHandler event="OnLButtonUp" function="CPlusHomeGuide.close" />
+					</EventHandlers>
+				</Button>
+
+				<Label name="$parentHint" font="MgenPlus_14" maxchars="64" textalign="left" handleinput="false">
+					<Size>
+						<AbsPoint x="412" y="18" />
+					</Size>
+					<Anchors>
+						<Anchor point="topleft" relativePoint="topleft">
+							<AbsPoint x="14" y="32" />
+						</Anchor>
+					</Anchors>
+					<Color r="200" g="205" b="210" />
+				</Label>
+
+				<Window name="$parentInputBG" handleinput="false">
+					<Size>
+						<AbsPoint x="412" y="30" />
+					</Size>
+					<Anchors>
+						<Anchor point="topleft" relativePoint="topleft">
+							<AbsPoint x="14" y="54" />
+						</Anchor>
+					</Anchors>
+					<Windows>
+						<FullResizeImage name="$parentBG" inherits="UO_Simple_Black_Background" alpha="0.55">
+							<Anchors>
+								<Anchor point="topleft" relativePoint="topleft" />
+								<Anchor point="bottomright" relativePoint="bottomright" />
+							</Anchors>
+						</FullResizeImage>
+						<FullResizeImage name="$parentFrame" inherits="UO_Default_Inner_Window_Frame">
+							<Anchors>
+								<Anchor point="topleft" relativePoint="topleft" />
+								<Anchor point="bottomright" relativePoint="bottomright" />
+							</Anchors>
+						</FullResizeImage>
+					</Windows>
+				</Window>
+
+				<!--
+					256 characters: the search page keeps the whole line within it
+					( home_search.js GUIDE_LINE_MAX ), cutting what the game shows
+					to 80 or shorter ( GUIDE_TEXT_MAX ).
+				-->
+				<EditBox name="$parentInput" font="UO_DefaultText" taborder="1" maxchars="256" scrolling="horz" layer="overlay">
+					<Size>
+						<AbsPoint x="396" y="20" />
+					</Size>
+					<Anchors>
+						<Anchor point="topleft" relativePoint="topleft" relativeTo="$parentInputBG">
+							<AbsPoint x="8" y="5" />
+						</Anchor>
+					</Anchors>
+					<EventHandlers>
+						<EventHandler event="OnKeyEnter" function="CPlusHomeGuide.onEnter" />
+						<EventHandler event="OnKeyEscape" function="CPlusHomeGuide.close" />
+					</EventHandlers>
+				</EditBox>
+
+				<!--
+					Where the guide goes: the prefix ( CPlusHomeTexts 1074 ) and what the
+					search page cuts to 80 characters ( home_search.js GUIDE_TEXT_MAX ).
+					412 wide and 3 lines high: at about 14 px a character that is
+					about 29 a line, 87 in all, and at about 20 px a line 60 high -
+					neither size measured on the client.
+				-->
+				<Label name="$parentTarget" font="MgenPlus_14" maxchars="160" textalign="left" wordwrap="true" handleinput="false">
+					<Size>
+						<AbsPoint x="412" y="60" />
+					</Size>
+					<Anchors>
+						<Anchor point="topleft" relativePoint="topleft">
+							<AbsPoint x="14" y="92" />
+						</Anchor>
+					</Anchors>
+					<Color r="235" g="235" b="235" />
+				</Label>
+
+				<!--
+					How the guide is going: 2 lines. The English lines take 2, and the
+					Japanese one with the distance to the box is about 30 characters,
+					more than the 29 a line is taken to hold ( see $parentTarget ).
+				-->
+				<Label name="$parentState" font="MgenPlus_14" maxchars="96" textalign="left" wordwrap="true" handleinput="false">
+					<Size>
+						<AbsPoint x="412" y="40" />
+					</Size>
+					<Anchors>
+						<Anchor point="topleft" relativePoint="topleft">
+							<AbsPoint x="14" y="154" />
+						</Anchor>
+					</Anchors>
+					<Color r="255" g="140" b="255" />
+				</Label>
+
+				<Button name="$parentClear" inherits="UO_Default_Medium_Select_Button" textalign="center">
+					<Anchors>
+						<Anchor point="bottomright" relativePoint="bottomright" relativeTo="">
+							<AbsPoint x="-14" y="-6" />
+						</Anchor>
+					</Anchors>
+					<EventHandlers>
+						<EventHandler event="OnLButtonUp" function="CPlusHomeGuide.clear" />
+					</EventHandlers>
+				</Button>
+
+			</Windows>
+		</Window>
+
+		<!--
+			The arrow over the box: the shape of Default's MobileArrow
+			( Textures/Textures.xml:194- ) under a name of its own, since Default
+			makes and destroys MobileArrow for the creature under the mouse
+			( Interface.lua:1152-1218 ).
+		-->
+		<Window name="CPlusHomeGuideArrow" handleinput="false" layer="popup">
+			<Size>
+				<AbsPoint x="180" y="300" />
+			</Size>
+			<Windows>
+				<AnimatedImage name="$parentAnim" fps="15" texture="OverheadArrow">
+					<Size>
+						<AbsPoint x="180" y="300" />
+					</Size>
+					<Anchors>
+						<Anchor point="topleft" relativePoint="topleft">
+							<AbsPoint x="0" y="0" />
+						</Anchor>
+					</Anchors>
+					<AnimFrames>
+						<AnimFrame id="1" x="0" y="0" />
+						<AnimFrame id="2" x="190" y="0" />
+						<AnimFrame id="3" x="380" y="0" />
+						<AnimFrame id="4" x="570" y="0" />
+						<AnimFrame id="5" x="760" y="0" />
+						<AnimFrame id="6" x="950" y="0" />
+						<AnimFrame id="7" x="1140" y="0" />
+						<AnimFrame id="8" x="1330" y="0" />
+						<AnimFrame id="9" x="1520" y="0" />
+						<AnimFrame id="10" x="1710" y="0" />
+						<AnimFrame id="11" x="1900" y="0" />
+						<AnimFrame id="12" x="2090" y="0" />
+						<AnimFrame id="13" x="2280" y="0" />
+						<AnimFrame id="14" x="2470" y="0" />
+						<AnimFrame id="15" x="2660" y="0" />
+						<AnimFrame id="16" x="2850" y="0" />
+						<AnimFrame id="17" x="3040" y="0" />
+						<AnimFrame id="18" x="3230" y="0" />
+						<AnimFrame id="19" x="3420" y="0" />
+						<AnimFrame id="20" x="3610" y="0" />
+						<AnimFrame id="21" x="3800" y="0" />
+						<AnimFrame id="22" x="3990" y="0" />
+						<AnimFrame id="23" x="4180" y="0" />
+						<AnimFrame id="24" x="4370" y="0" />
+						<AnimFrame id="25" x="4560" y="0" />
+						<AnimFrame id="26" x="4750" y="0" />
+						<AnimFrame id="27" x="4940" y="0" />
+						<AnimFrame id="28" x="5130" y="0" />
+						<AnimFrame id="29" x="5320" y="0" />
+						<AnimFrame id="30" x="5510" y="0" />
+						<AnimFrame id="31" x="0" y="310" />
+						<AnimFrame id="32" x="190" y="310" />
+						<AnimFrame id="33" x="380" y="310" />
+						<AnimFrame id="34" x="570" y="310" />
+						<AnimFrame id="35" x="760" y="310" />
+						<AnimFrame id="36" x="950" y="310" />
+					</AnimFrames>
+				</AnimatedImage>
+			</Windows>
+		</Window>
+
+		<!--
+			The frame round the next slot. handleinput="false": clicks, double
+			clicks and drags go through to the slot underneath.
+		-->
+		<Window name="CPlusHomeGuideFrame" handleinput="false" layer="overlay">
+			<Size>
+				<AbsPoint x="64" y="64" />
+			</Size>
+			<Windows>
+				<DynamicImage name="$parentImage" texture="CPlusHomeGuideFrameTexture" texturescale="1" handleinput="false" layer="overlay">
+					<Size>
+						<AbsPoint x="64" y="64" />
+					</Size>
+					<Anchors>
+						<Anchor point="topleft" relativePoint="topleft" />
+					</Anchors>
+					<TexDims x="64" y="64" />
+				</DynamicImage>
+			</Windows>
+		</Window>
+
+	</Windows>
+</Interface>

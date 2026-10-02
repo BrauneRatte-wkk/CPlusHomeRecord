@@ -1,0 +1,152 @@
+<Interface xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../Interface.xsd">
+
+	<!--
+		The Paste the areas window ( CPlusHomeArea.lua ): made once, when first
+		opened, and shown and hidden after that. Built as the guide's window is
+		( CPlusHomeGuide.xml ), without its target line and its button.
+	-->
+
+	<Windows>
+
+		<!--
+			Home Record's right-click menu opens it ( CPlusHomeArea.open ). Esc in
+			the box, a right click or the close button closes it
+			( CPlusHomeArea.close ); Enter registers the houses of the pasted line.
+
+			160 high: the state lines end at 152 ( $parentState ). It opens lower
+			than the guide's window ( 160 to 404 ), so that the two do not cover
+			each other before either has been moved.
+		-->
+		<Window name="CPlusHomeAreaWindow" movable="true" handleinput="true" savesettings="true">
+			<Size>
+				<AbsPoint x="440" y="160" />
+			</Size>
+			<Anchors>
+				<Anchor point="top" relativePoint="top" relativeTo="">
+					<AbsPoint x="0" y="420" />
+				</Anchor>
+			</Anchors>
+			<EventHandlers>
+				<EventHandler event="OnRButtonUp" function="CPlusHomeArea.close" />
+			</EventHandlers>
+			<Windows>
+
+				<FullResizeImage name="$parentBackground" alpha="0.9" inherits="UO_Simple_Black_Background" layer="background">
+					<Anchors>
+						<Anchor point="topleft" relativePoint="topleft" relativeTo="" />
+						<Anchor point="bottomright" relativePoint="bottomright" relativeTo="" />
+					</Anchors>
+				</FullResizeImage>
+
+				<HorizontalResizeImage name="$parentTitleBar" inherits="UO_Default_Title_Bar" handleinput="true">
+					<Anchors>
+						<Anchor point="topleft" relativePoint="topleft" />
+						<Anchor point="topright" relativePoint="topright" />
+					</Anchors>
+					<EventHandlers>
+						<EventHandler event="OnRButtonUp" function="CPlusHomeArea.close" />
+					</EventHandlers>
+				</HorizontalResizeImage>
+
+				<Label name="$parentTitle" font="MgenPlus_14" maxchars="32" textalign="center" handleinput="false" layer="popup">
+					<Size>
+						<AbsPoint x="380" y="18" />
+					</Size>
+					<Anchors>
+						<Anchor point="topleft" relativePoint="topleft">
+							<AbsPoint x="25" y="4" />
+						</Anchor>
+						<Anchor point="topright" relativePoint="topright">
+							<AbsPoint x="-25" y="4" />
+						</Anchor>
+					</Anchors>
+				</Label>
+
+				<Button name="$parentClose" inherits="UO_Default_Close_Button" layer="popup">
+					<Anchors>
+						<Anchor point="topright" relativePoint="topright" relativeTo="$parentTitleBar" />
+					</Anchors>
+					<EventHandlers>
+						<EventHandler event="OnLButtonUp" function="CPlusHomeArea.close" />
+					</EventHandlers>
+				</Button>
+
+				<Label name="$parentHint" font="MgenPlus_14" maxchars="64" textalign="left" handleinput="false">
+					<Size>
+						<AbsPoint x="412" y="18" />
+					</Size>
+					<Anchors>
+						<Anchor point="topleft" relativePoint="topleft">
+							<AbsPoint x="14" y="32" />
+						</Anchor>
+					</Anchors>
+					<Color r="200" g="205" b="210" />
+				</Label>
+
+				<Window name="$parentInputBG" handleinput="false">
+					<Size>
+						<AbsPoint x="412" y="30" />
+					</Size>
+					<Anchors>
+						<Anchor point="topleft" relativePoint="topleft">
+							<AbsPoint x="14" y="54" />
+						</Anchor>
+					</Anchors>
+					<Windows>
+						<FullResizeImage name="$parentBG" inherits="UO_Simple_Black_Background" alpha="0.55">
+							<Anchors>
+								<Anchor point="topleft" relativePoint="topleft" />
+								<Anchor point="bottomright" relativePoint="bottomright" />
+							</Anchors>
+						</FullResizeImage>
+						<FullResizeImage name="$parentFrame" inherits="UO_Default_Inner_Window_Frame">
+							<Anchors>
+								<Anchor point="topleft" relativePoint="topleft" />
+								<Anchor point="bottomright" relativePoint="bottomright" />
+							</Anchors>
+						</FullResizeImage>
+					</Windows>
+				</Window>
+
+				<!--
+					256 characters: the longest line the search page writes, nine
+					houses at the largest numbers, is 224 ( the page keeps to this
+					box ).
+				-->
+				<EditBox name="$parentInput" font="UO_DefaultText" taborder="1" maxchars="256" scrolling="horz" layer="overlay">
+					<Size>
+						<AbsPoint x="396" y="20" />
+					</Size>
+					<Anchors>
+						<Anchor point="topleft" relativePoint="topleft" relativeTo="$parentInputBG">
+							<AbsPoint x="8" y="5" />
+						</Anchor>
+					</Anchors>
+					<EventHandlers>
+						<EventHandler event="OnKeyEnter" function="CPlusHomeArea.onEnter" />
+						<EventHandler event="OnKeyEscape" function="CPlusHomeArea.close" />
+					</EventHandlers>
+				</EditBox>
+
+				<!--
+					Why a line was not taken, or what failed: 3 lines. At about 14 px
+					a character that is about 29 a line in Japanese, and 20 px a line
+					( as CPlusHomeGuide.xml takes them, neither measured on the client ).
+				-->
+				<Label name="$parentState" font="MgenPlus_14" maxchars="160" textalign="left" wordwrap="true" handleinput="false">
+					<Size>
+						<AbsPoint x="412" y="60" />
+					</Size>
+					<Anchors>
+						<Anchor point="topleft" relativePoint="topleft">
+							<AbsPoint x="14" y="92" />
+						</Anchor>
+					</Anchors>
+					<Color r="255" g="190" b="90" />
+				</Label>
+
+			</Windows>
+		</Window>
+
+	</Windows>
+</Interface>

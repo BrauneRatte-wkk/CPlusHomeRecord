@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Interface xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../Interface.xsd">
+	<!--
+		The drawings of the home record's icons in the actions window
+		( CPlusHomeSupport.lua ACTIONS ).
+	-->
+	<Assets>
+		<Icon id="876029" texture="Icons/home_record.dds" name="Home Record" />
+		<Icon id="876030" texture="Icons/home_search.dds" name="Home Search" />
+	</Assets>
+</Interface>

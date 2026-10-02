@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>家の記録 使い方</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f4f6f7; --panel: #ffffff; --ink: #1d2a2e; --sub: #5b6b70; --line: #d9e1e3;
+    --accent: #1e828c; --accent-soft: #e3f2f3; --warn: #b35c00; --warn-soft: #fff1e0; --mark: #b0307a;
+    --font: "Yu Gothic UI", "Meiryo", "Hiragino Sans", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #121719; --panel: #1b2225; --ink: #e4eaec; --sub: #9aa9ae; --line: #33414a;
+      --accent: #56c1cb; --accent-soft: #163b40; --warn: #f2a453; --warn-soft: #3b2a15; --mark: #e070b0;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.75 var(--font); }
+  main { max-width: 920px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 8px 0 4px; }
+  .lead { color: var(--sub); margin: 0 0 20px; }
+  h2 { font-size: 20px; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--accent); }
+  h3 { font-size: 16px; margin: 24px 0 8px; }
+  nav.toc { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 18px; }
+  nav.toc ol { margin: 0; padding-left: 20px; }
+  nav.toc a { color: var(--accent); text-decoration: none; }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin: 12px 0; }
+  .note { background: var(--warn-soft); border: 1px solid var(--warn); border-radius: 10px; padding: 10px 16px; margin: 12px 0; }
+  .note b { color: var(--warn); }
+  ol.steps > li { margin-bottom: 10px; }
+  code, .path { font-family: Consolas, "BIZ UDGothic", monospace; font-size: 13.5px; background: var(--accent-soft); border-radius: 4px; padding: 1px 5px; overflow-wrap: anywhere; }
+  pre { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; font: 13.5px/1.6 Consolas, "BIZ UDGothic", monospace; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; background: var(--panel); }
+  th, td { text-align: left; padding: 7px 10px; border: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--accent-soft); font-weight: 600; white-space: nowrap; }
+  figure { margin: 16px 0; }
+  figure svg { width: 100%; height: auto; display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  figcaption { color: var(--sub); font-size: 13px; margin-top: 6px; }
+  svg text { fill: var(--ink); font-family: var(--font); font-size: 13px; }
+  svg .sub { fill: var(--sub); font-size: 11.5px; }
+  svg .node { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+  svg .file { fill: var(--panel); stroke: var(--sub); stroke-width: 1.2; stroke-dasharray: 4 3; }
+  svg .pc { fill: none; stroke: var(--line); stroke-width: 2; }
+  svg .arrow { stroke: var(--ink); stroke-width: 1.5; fill: none; marker-end: url(#head); }
+  svg .del { stroke: var(--warn); }
+  svg .lab { font-size: 11.5px; }
+  footer { margin-top: 48px; color: var(--sub); font-size: 13px; border-top: 1px solid var(--line); padding-top: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>家の記録 使い方</h1>
+  <p class="lead">CLifeUI に足して使う、非公式の追加機能「CPlusHomeRecord（家の記録）」と、その検索ページ「CPlusHomeViewer」の入れ方と使い方です。</p>
+  <div class="note"><b>CLifeUI が必須です。</b>CLifeUI の部品を使って動くので、CLifeUI を入れていない状態や、ほかのカスタム UI では動きません。先に CLifeUI を入れて、動くことを確かめてから入れてください。CLifeUI は、作者様の公式ページ（<a href="https://uo.clife.work/uosa-custom-ui-clifeui/">https://uo.clife.work/uosa-custom-ui-clifeui/</a>）の手順で入れてください。</div>
+
+  <nav class="toc" aria-label="目次">
+    <ol>
+      <li><a href="#what">これは何か</a></li>
+      <li><a href="#parts">しくみ（構成図）</a></li>
+      <li><a href="#env">動く環境</a></li>
+      <li><a href="#install">入れ方</a></li>
+      <li><a href="#game">ゲームでの使い方</a></li>
+      <li><a href="#search">検索ページの使い方</a></li>
+      <li><a href="#safety">安全について</a></li>
+      <li><a href="#remove">アンインストール</a></li>
+      <li><a href="#load">メモリ使用量について</a></li>
+      <li><a href="#notes">注意点・細かい仕様</a></li>
+      <li><a href="#terms">作り方と利用条件</a></li>
+    </ol>
+  </nav>
+
+  <h2 id="what">1. これは何か</h2>
+  <p>自分の家でロックダウン（またはロックダウン &amp; セキュア）した箱を開いて閉じると、その中身をファイルに記録します。箱の中で開いた袋や箱の中身も記録します。記録は PC のブラウザで開く「家の記録 検索」のページで探せます。</p>
+  <ul>
+    <li>アイテムの名前、プロパティ（説明の行）、家、階、箱の種類で探せます。</li>
+    <li>宝石箱・パワースクロールブック／超越のスクロールブック・デイビーズのロッカーの中身も記録します。</li>
+    <li>見つけたアイテムの「ゲームで案内」を使うと、ゲームの中で、目的の箱の上に矢印が出て、箱を開くと次のマスが光ります。</li>
+  </ul>
+  <p>配る物は 2 つの zip に分かれています。</p>
+  <table>
+    <tr><th>CPlusHomeRecord-0.2.zip</th><td>ゲームの中で記録する部分（モジュール）。CLifeUI の <code>ClfMods</code> フォルダの中に入れます。</td></tr>
+    <tr><th>CPlusHomeViewer-0.2.zip</th><td>記録を探す検索ページと、その読み出し役（ビューアー）。ゲームのフォルダの外の、好きな場所（ドキュメントなど）に置きます。</td></tr>
+  </table>
+
+  <h2 id="parts">2. しくみ（構成図）</h2>
+  <figure>
+    <svg viewBox="0 0 860 400" role="img" aria-label="ゲームが記録のフォルダに記録を書き、ビューアーのフォルダの読み出し役がそれを読んでブラウザの検索ページに渡す。名前と記録のフォルダの場所は、名前と設定のファイルに保存する。">
+      <defs>
+        <marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <rect class="pc" x="10" y="10" width="840" height="380" rx="14"/>
+      <text x="26" y="34" class="sub">あなたの PC の中だけで完結します（外への通信はありません）</text>
+
+      <rect class="node" x="30" y="60" width="230" height="120" rx="10"/>
+      <text x="45" y="86">ゲーム（Enhanced Client）</text>
+      <text x="45" y="110" class="sub">CLifeUI ＋ 家の記録</text>
+      <text x="45" y="134" class="sub">箱を閉じたときに記録する</text>
+      <text x="45" y="156" class="sub">家の範囲・ON/OFF はゲームの設定</text>
+
+      <rect class="file" x="330" y="70" width="210" height="100" rx="8"/>
+      <text x="345" y="96">記録のフォルダ</text>
+      <text x="345" y="120" class="sub">logs\CPlusExport</text>
+      <text x="345" y="142" class="sub">1 箱 1 ファイル</text>
+
+      <rect class="node" x="330" y="230" width="210" height="120" rx="10"/>
+      <text x="345" y="256">読み出し役</text>
+      <text x="345" y="280" class="sub">PowerShell（最小化の窓）</text>
+      <text x="345" y="302" class="sub">localhost:47651</text>
+      <text x="345" y="324" class="sub">10 分使わないと止まる</text>
+
+      <rect class="node" x="620" y="230" width="210" height="120" rx="10"/>
+      <text x="635" y="256">ブラウザ</text>
+      <text x="635" y="280" class="sub">「家の記録 検索」のページ</text>
+      <text x="635" y="302" class="sub">検索・名前の設定・整理削除</text>
+
+      <rect class="file" x="620" y="70" width="210" height="100" rx="8"/>
+      <text x="635" y="96">名前と設定のファイル</text>
+      <text x="635" y="120" class="sub">%LOCALAPPDATA%\CPlusHomeSearch\</text>
+      <text x="635" y="140" class="sub">home_names.json・home_settings.json</text>
+
+      <rect class="node" x="30" y="240" width="230" height="100" rx="10"/>
+      <text x="45" y="266">ビューアーのフォルダ</text>
+      <text x="45" y="290" class="sub">CPlusHomeViewer（好きな場所）</text>
+      <text x="45" y="312" class="sub">家の記録検索.bat で開く</text>
+
+      <path class="arrow" d="M260,120 L328,120" style="color: var(--ink)"/>
+      <text x="268" y="110" class="lab">書く</text>
+      <path class="arrow" d="M435,228 L435,172" style="color: var(--ink)"/>
+      <text x="443" y="205" class="lab">読む（整理削除のときだけ消す）</text>
+      <path class="arrow" d="M540,290 L618,290" style="color: var(--ink)"/>
+      <text x="548" y="280" class="lab">渡す</text>
+      <path class="arrow" d="M540,250 L640,172" style="color: var(--ink)"/>
+      <text x="585" y="200" class="lab">名前を保存</text>
+      <path class="arrow" d="M262,290 L328,290" style="color: var(--ink)"/>
+      <text x="270" y="280" class="lab">起動</text>
+    </svg>
+    <figcaption>ゲームが記録を書き、PC の中の小さなサーバ（読み出し役）がそれを読んでブラウザに渡します。ブラウザが記録のフォルダを直接開けないため、読み出し役を間に置いています。読み出し役と検索ページはビューアーのフォルダにあり、ゲームのフォルダの外に置きます。</figcaption>
+  </figure>
+
+  <h2 id="env">3. 動く環境</h2>
+  <table>
+    <tr><th>ゲーム</th><td>Ultima Online Enhanced Client。日本語のクライアントで確かめています。</td></tr>
+    <tr><th>カスタム UI</th><td><b>CLifeUI（必須）</b>。公開されている版で確かめています。家の記録は CLifeUI の部品を使うので、CLifeUI が無いと動きません。</td></tr>
+    <tr><th>Windows</th><td>Windows 10 / 11（Home でも Pro でも）。追加で入れるものはありません。検索ページは、Windows に最初から入っている PowerShell 5.1 と、Windows の HTTP の仕組み（http.sys）だけで動きます。</td></tr>
+    <tr><th>ブラウザ</th><td>Chrome・Edge など、新しいブラウザ（作者は Chrome と Edge で確かめています）。</td></tr>
+  </table>
+
+  <h2 id="install">4. 入れ方</h2>
+  <ol class="steps">
+    <li><b>2 つの zip の「許可する」に印を付けてから展開します。</b>それぞれの zip を右クリック →「プロパティ」→ 下の「セキュリティ: 許可する」に印を付けて OK。こうしないと、ネットから来たファイルとして、検索ページを開くときに警告が出ます。もし「発行元を確認できませんでした。このソフトウェアを実行しますか?」の警告が出たら、［実行］を押せば開けます。毎回出さないようにするには、zip の「許可する」からやり直してください。</li>
+    <li><b>モジュールを CLifeUI の中に入れます。</b><code>CPlusHomeRecord-0.2.zip</code> を展開してできた <code>ClfMods\CPlusHomeRecord</code> を、CLifeUI の <code>ClfMods</code> フォルダの中に入れます。
+<pre>C:\Program Files (x86)\Electronic Arts\Ultima Online Enhanced\
+  UserInterface\
+    &lt;CLifeUI のフォルダ&gt;\    ← 名前は自由（公式の手順では ClifeUI-master）
+      ClfMods\
+        ClfCommon\          ← CLifeUI のもの
+        …
+        CPlusHomeRecord\    ← ここに入れる（フォルダごと）
+  logs\
+    damage\                 ← CLifeUI の公式の手順で作るフォルダ
+    animalLore\             ← 同上
+    CPlusExport\              ← 家の記録の記録が入るフォルダ（自分で作る）</pre>
+      Program Files の下なので、コピーのときに管理者の確認が出ます。</li>
+    <li><b>記録のフォルダを作ります。</b><span class="path">…\Ultima Online Enhanced\logs</span> の中に <code>CPlusExport</code> フォルダを作ります。家の記録の専用のフォルダです（CLifeUI の公式の手順で作る <code>damage</code>・<code>animalLore</code> フォルダと同じ <code>logs</code> の中）。<b>必ず作ってください。</b>ゲームはこのフォルダを自動では作りません。無いと、チャットには「家の記録: …」と記録したように出ても、ファイルは作られず、エラーも出ません。検索ページを開くと赤い枠で知らせるので、そこで気づけます。フォルダを作れば、検索ページはそのまま回復します（それまでの記録は残っていません）。</li>
+    <li><b>（整理削除を使うなら）記録のフォルダに書き込みの権限を付けます。</b>検索ページの［整理削除］で古い記録を消すには、あなたの Windows のアカウントに、このフォルダの「変更」の権限が要ります。<code>CPlusExport</code> フォルダを右クリック →「プロパティ」→「セキュリティ」→「編集」→ 一覧から自分の名前（Windows にサインインしている名前）を選んで「変更」に印を付けます（一覧に無ければ「追加」で自分の名前を足します）。権限を付けなくても、記録と検索はできます。</li>
+    <li><b>ビューアーを好きな場所に置きます。</b><code>CPlusHomeViewer-0.2.zip</code> を展開してできた <code>CPlusHomeViewer</code> フォルダを、ゲームのフォルダの外の好きな場所（ドキュメントなど）に置きます。フォルダ 1 つにまとまっているので、そのまま置けば済みます。</li>
+    <li><b>ゲームを起動します。</b>ログインすると、チャットに <code>CPlusHomeRecord : initialized (ON)</code> と出ます。</li>
+  </ol>
+
+  <h2 id="game">5. ゲームでの使い方</h2>
+  <h3>アイコンをホットバーに置く</h3>
+  <p>行動ウィンドウの分類「CPlus」に、2 つのアイコンがあります。ホットバーに置いて使います。</p>
+  <table>
+    <tr><th>家の記録（家/記録）</th><td>左クリックで、登録した家と記録の状態を表示します。右クリックで、家の登録・記録の ON/OFF・範囲の貼り付けのメニューが出ます。</td></tr>
+    <tr><th>家検索</th><td>検索ページの「ゲームで案内」でコピーした文字を貼る窓を開きます。</td></tr>
+  </table>
+
+  <h3>家を登録する</h3>
+  <ol class="steps">
+    <li>家の敷地の角に立ちます。</li>
+    <li>「家の記録」アイコンを右クリック →「角を足す」→「家 1」。</li>
+    <li>反対側の角にも立って、同じく「角を足す」→「家 1」。角を足すたびに、足した角を全部囲む四角が家の範囲になります（高さは見ません）。</li>
+    <li>アイコンを左クリックして、範囲が合っているか確かめます。</li>
+  </ol>
+  <p>家は 9 軒まで登録できます。登録はキャラクターごとです。まちがえたら、右クリック →「家を消す」でやり直します。</p>
+
+  <h3>記録する</h3>
+  <p>登録した家の中で、ロックダウンした箱を開いて閉じると、閉じたときに記録されます。チャットに <code>家の記録: 家 1: …</code> と出ます。家の範囲の外では何もしません。</p>
+  <table>
+    <tr><th>宝石箱など</th><td>開いている間に見えたページのアイテムだけを記録します。全部のページをめくってから閉じてください。</td></tr>
+    <tr><th>スクロールブック</th><td>本を開いて、技能のページを自分で開きます。開いたページの本数を控え、本を閉じたときに記録します。1 回で全部の技能を開かなくても、何回かに分けて開いた分を合わせて見ます。スクロールを出し入れしたときは、その技能のページを開き直してください。ロックダウンした本か、ロックダウンした箱の中の本を記録します（バックパックの中の本は記録しません）。</td></tr>
+    <tr><th>デイビーズのロッカー</th><td>開いている間に見えたページの地図と SOS を記録します。</td></tr>
+  </table>
+  <p>記録を止めたいときは、右クリック →「記録 ON/OFF」。</p>
+
+  <h2 id="search">6. 検索ページの使い方</h2>
+  <h3>開き方</h3>
+  <p><code>CPlusHomeViewer\家の記録検索.bat</code> をダブルクリックします。デスクトップにショートカットを作っておくと便利です。</p>
+  <ul>
+    <li>ブラウザで「家の記録 検索」のページが開きます。<b>ブラウザが自動で開かないときは、</b>自分でブラウザを開いて、アドレス欄に <code>http://localhost:47651/</code> を入れてください。</li>
+    <li>タスクバーに、最小化された PowerShell の窓（題名「家の記録 検索（閉じると検索ページが止まります）」）が出ます。これが読み出し役です。<b>この窓を閉じると検索ページが止まります。</b></li>
+    <li>止め方は 2 つです。① 検索ページを閉じてから 10 分待つと、自動で止まります。② すぐ止めたいときは、タスクバーの PowerShell の窓（題名「家の記録 検索（閉じると検索ページが止まります）」）を自分で閉じます。</li>
+  </ul>
+
+  <h3>記録のフォルダ</h3>
+  <p>検索ページは、まず標準のインストール先の記録のフォルダ（<span class="path">C:\Program Files (x86)\Electronic Arts\Ultima Online Enhanced\logs\CPlusExport</span>）を見ます。</p>
+  <ul>
+    <li>ゲームのフォルダはあって <code>CPlusExport</code> が無いときは、作るように案内します。作れば、そのまま読めるようになります。</li>
+    <li>ゲームを別の場所に入れているときは、最初の 1 回だけ場所を尋ねます。エクスプローラーでゲームのフォルダか <code>CPlusExport</code> フォルダを開き、アドレス欄のパスをコピーして、検索ページの欄に貼り、［決める］を押してください。</li>
+    <li>決めた場所は覚えておきます（<span class="path">%LOCALAPPDATA%\CPlusHomeSearch\home_settings.json</span>）。見出しの［変える］で、あとから変えられます。</li>
+  </ul>
+  <p>受け付けるのは、<code>CPlusExport</code> という名前のフォルダだけです（ゲームのフォルダを貼ったときは、その中の <code>logs\CPlusExport</code>）。読み出し役が消すのも、そのフォルダの中の記録の名前のファイルだけです。</p>
+
+  <h3>タブ</h3>
+  <table>
+    <tr><th>検索</th><td>左の条件で絞り込みます。アイテム名、説明の言葉（一覧に無いプロパティ）、家と階、プロパティの数値、箱の種類（宝石箱・スクロールブックなど）。見つけたアイテムのカードの［ゲームで案内］で、ゲームへ貼る文字をコピーします。</td></tr>
+    <tr><th>開きに行くリスト</th><td>まだ中身を記録していない入れ物や、全部のページを読めていない宝石箱・本の一覧です。最後まで読み込まれていないスクロールブックは、本ごとに「読み込んだ技能 N / 全 M」と出ます。</td></tr>
+    <tr><th>名前の設定</th><td>家・階・箱に名前を付けます。キャラクターの割り当てと、家の範囲をゲームへコピーするのもここです。</td></tr>
+  </table>
+
+  <h3>最初にすること: キャラクターの割り当て</h3>
+  <p>記録には、書いたキャラクターの番号が入っています。「名前の設定」の「キャラクターの割り当て」で、番号ごとに、どのアカウント・シャードのキャラクターかを決めてください。候補はゲームの設定のフォルダ（User Data）から探して出ます。<b>押して決めるまで確定しません。</b>決めるまで、その記録は「全部を見る」でだけ出ます。</p>
+
+  <h3>ゲームで案内</h3>
+  <ol class="steps">
+    <li>検索ページでアイテムのカードの［ゲームで案内］を押します（案内の文字がコピーされます）。</li>
+    <li>ゲームで「家検索」アイコンを押し、開いた窓に貼り付けて Enter。</li>
+    <li>目的の箱の上に赤紫の矢印が出ます。箱や袋を開くと、次に開くマスが赤紫の枠で光ります（グリッド表示のとき）。もう一度アイコンを押すと、窓と案内が消えます。</li>
+  </ol>
+
+  <h3>家の範囲をほかのキャラクターへ</h3>
+  <p>「名前の設定」の「家の範囲をゲームへ」で 1 行コピーし、ゲームで「家の記録」アイコンを右クリック →「範囲を貼る」の窓に貼って Enter を押すと、そのキャラクターにも同じ番号で家が登録されます。</p>
+
+  <h3>整理削除</h3>
+  <p>このソフトはデータベースを使いません。箱を閉じるたびに、その箱の記録ファイルが 1 本増えます（1 本はふつう数 KB、大きな箱でも数十 KB。記録 1,000 本でおよそ 8 MB）。検索ページは、箱ごとにいちばん新しい記録を使うので、同じ箱の古い記録は使われないまま、たまっていきます。ときどき整理削除で消してください。</p>
+  <p>見出しの［整理削除］を押すと、古い記録を消します。<b>今の検索の結果に使われていない古い記録だけを消し、使われている古い記録（読みかけのスクロールブックや宝石箱の前の記録など）は残します。</b>確認の帯の［消す］を押したときだけ消えます。消した記録は元に戻せません。</p>
+
+  <h2 id="safety">7. 安全について</h2>
+  <h3>ゲームに対してしないこと</h3>
+  <ul>
+    <li>ゲームのクライアントを書き換えません。Enhanced Client が公式に用意しているカスタム UI の仕組みの中で動きます。</li>
+    <li>ゲームのメモリを外から読んだり書いたりしません。</li>
+    <li>ゲームとサーバの間の通信を、読んだり書き換えたりしません。このソフトからサーバへ何かを送ることもありません。</li>
+    <li>ゲームの操作を自動で行いません。ボタンを押す・アイテムを使う・キャラクターを動かすといった操作はせず、家の中の開いた箱や本のページに出ているものを読んでテキストログ（記録のファイル）に記録することと、案内の矢印や枠を表示することをします。放置して何かを進める処理もありません。</li>
+    <li>検索ページとゲームは直接つながっていません。案内は、検索ページでコピーした文字を自分でゲームに貼って始めます。</li>
+    <li>検索ページは、記録に書かれた文字だけを使います。</li>
+  </ul>
+  <h3>検索ページの読み出し役がすること</h3>
+  <p>検索ページの読み出し役（<code>home_search_server.ps1</code>）がすること・しないことです。</p>
+  <table>
+    <tr><th>待ち受け</th><td><code>http://localhost:47651/</code> で待ち受け、この PC の中からの要求にだけ答えます。ほかの PC からの要求は断ります。</td></tr>
+    <tr><th>読むもの</th><td>記録のフォルダの記録、名前と設定のファイル、User Data のフォルダとファイルの名前（キャラクターの割り当ての候補に使う。ファイルの中身は読みません）。</td></tr>
+    <tr><th>書くもの</th><td>読み出し役が書くのは、名前と設定のファイル（<span class="path">%LOCALAPPDATA%\CPlusHomeSearch</span> の <code>home_names.json</code>・<code>home_settings.json</code>）だけです。ゲームの中の部分は、記録を記録のフォルダに書き、家の範囲と記録の ON/OFF をゲームの設定として保存します。ブラウザは、表示の設定（明るさなど）をそのブラウザに保存します。</td></tr>
+    <tr><th>消すもの</th><td>［整理削除］→［消す］を押したときだけ、記録のフォルダの古い記録を消します。</td></tr>
+    <tr><th>外への通信</th><td>ありません。ほかのサイトのページから、読み出し役の答えを読んだり、名前を書かせたり記録を消させたりはできません（送り元と宛先を確かめ、ほかのページの枠にも入れさせません）。</td></tr>
+    <tr><th>止まり方</th><td>止め方は 2 つです。① 検索ページを閉じてから 10 分待つと、自動で止まります。② すぐ止めたいときは、タスクバーの PowerShell の窓（題名「家の記録 検索（閉じると検索ページが止まります）」）を自分で閉じます。</td></tr>
+  </table>
+  <p><code>家の記録検索.bat</code> は PowerShell を <code>-ExecutionPolicy Bypass</code> で起動します。これは、この起動のときだけスクリプトの実行の制限を外す指定で、PC の設定は変えません。スクリプトの実行を許していない PC でも、この起動のときだけ動かすために必要です。中身は文字のファイルなので、メモ帳などで開いて確かめられます。</p>
+  <div class="note"><b>配布前の検査:</b> 配る zip は、公開する前に ESET で検査しています。検査した日と検出エンジンの版、zip の SHA-256 は、GitHub のリリースの説明に書いてあります。</div>
+
+  <h2 id="remove">8. アンインストール</h2>
+  <ul>
+    <li>先にホットバーから 2 つのアイコンを外します（残すと、押しても何も起きないアイコンになります）。</li>
+    <li>CLifeUI の <code>ClfMods\CPlusHomeRecord</code> フォルダを消します。次の起動から読み込まれません。</li>
+    <li>ビューアーの <code>CPlusHomeViewer</code> フォルダを消します。</li>
+    <li>記録を消すなら、<span class="path">…\Ultima Online Enhanced\logs\CPlusExport</span> フォルダを消します（家の記録の専用のフォルダです）。</li>
+    <li>名前と、覚えた記録のフォルダの場所を消すなら、<span class="path">%LOCALAPPDATA%\CPlusHomeSearch</span> フォルダを消します。</li>
+    <li>記録と名前のファイルは、消しても消さなくてもゲームには影響しません（ゲームはこれらを読みません）。家の範囲と記録の ON/OFF の値はゲームの設定に残りますが、使われなくなるだけです。</li>
+  </ul>
+  <h3>ゲームの設定に残るもの</h3>
+  <p>家の記録は、次の値をゲームの設定に保存します。フォルダを消しても残りますが、読む物が無くなるので、ゲームの動きには影響しません。</p>
+  <p>キャラクターごとの設定のファイル: <span class="path">ドキュメント\EA Games\&lt;ゲームの名前&gt;\User Data\&lt;アカウント&gt;\&lt;シャード&gt;\&lt;キャラクター名&gt;</span>（拡張子の無い XML のファイル）</p>
+  <table>
+    <tr><th>ファイルの中の場所</th><th>名前</th><th>中身</th></tr>
+    <tr><td><code>CharacterSettings</code> → <code>Options</code> → <code>UIVariables</code> の <code>BoolVar</code></td><td><code>CPlusHomeRecordEnable</code></td><td>記録の ON/OFF（<code>true</code>／<code>false</code>。無ければ ON）</td></tr>
+    <tr><td>同じ所の <code>NumberVar</code></td><td><code>CPlusHomeRecordHouse&lt;n&gt;Facet</code>・<code>…MinX</code>・<code>…MaxX</code>・<code>…MinY</code>・<code>…MaxY</code>・<code>…Corners</code>（n は家の番号 1〜9）</td><td>家 n の範囲。マップの番号、東西と南北の最小と最大、足した角の数（0 なら未登録）。家 1 軒につき 6 つ</td></tr>
+    <tr><td><code>CharacterSettings</code> → <code>Interface</code> → <code>WindowSettings</code> の <code>WindowPositions</code></td><td><code>CPlusHomeGuideWindow</code>・<code>CPlusHomeAreaWindow</code></td><td>家検索の窓と、範囲を貼る窓の位置（動かしたときだけ）</td></tr>
+    <tr><td><code>CharacterSettings</code> → <code>Interface</code> → <code>Hotbars</code> の <code>UserAction</code></td><td><code>id</code> が <code>6029</code>・<code>6030</code></td><td>ホットバーに置いたアイコン（ホットバーから外せば消えます）</td></tr>
+  </table>
+  <p>ほかに、ゲームがモジュールごとに作る <span class="path">User Data\CPlusHomeRecord\ModSettings.xml</span> が残ります。中身は、モジュールが有効かどうかと、最後に読んだ版だけです（このファイルは丸ごと消してかまいません）。</p>
+  <p>キャラクターの設定のファイルは、ほかの UI の設定と同じファイルなので、手で書き換えるのはおすすめしません。書き換えるなら、ゲームを閉じてから、ファイルをコピーしたうえで行ってください。</p>
+
+  <h2 id="load">9. メモリ使用量について（作者の環境での実測）</h2>
+  <table>
+    <tr><th>動くとき</th><td>記録が動くのは、登録した家の範囲の中で箱を開け閉めしたときだけです。家の外では何もしません。常に動いている処理（定期処理）は持ちません。案内している間だけ 2 秒おきに箱の場所を見直します。</td></tr>
+    <tr><th>ゲームのメモリ</th><td>記録の書き出しで増えるのは、箱を 1 回閉じるあたり 0.2 MB 以下で、ふだんの揺れに埋もれる大きさでした。案内の見直し（3 分）と、家検索の窓の開け閉め（10 回）では増えませんでした。<br>なお、箱を開けると、ゲーム自身が中身の情報を蓄えます。初めて開く箱ほどゲームのメモリは増えますが、これは家の記録の有無とは関係ありません。</td></tr>
+    <tr><th>読み出し役</th><td>PowerShell 自体で約 90 MB、記録 1,000 本余りを検索ページに渡したあとで約 120 MB でした。検索ページを閉じてから 10 分待つと自動で止まり、そのあとは動いていません（すぐ止めたいときは、PowerShell の窓を自分で閉じます）。</td></tr>
+    <tr><th>記録の大きさ</th><td>1 本はふつう数 KB、大きな箱でも数十 KB。記録 1,000 本でおよそ 8 MB です。</td></tr>
+  </table>
+
+  <h2 id="notes">10. 注意点・細かい仕様</h2>
+  <ul>
+    <li><b>記録はたまっていきます。</b>箱を閉じるたびに記録ファイルが 1 本増え、検索ページは箱ごとにいちばん新しい記録を使います。古い記録は［整理削除］で消してください。</li>
+    <li><b>記録は箱を開いたときだけ取れます。</b>開かない箱の中身は記録できません。</li>
+    <li><b>新しいアイテムやプロパティ:</b> アイテムの名前と説明の文は、ゲームが表示している文をそのまま記録するので、新しいものも「アイテム名」「説明の言葉」で探せます。左の条件の選択欄は決まった一覧なので、新しいプロパティは出ません（「説明の言葉」で探してください）。</li>
+    <li><b>パブリッシュの影響:</b> 宝石箱・デイビーズのロッカー・スクロールブックは、ゲームの画面の並びを読んでいます。パブリッシュで画面が変わると、読めなくなることがあります。</li>
+    <li><b>確かめていない入れ物:</b> ベテラン報奨の物置小屋・ポーション貯蔵槽など、作者が持っていない一部の入れ物は、動作を確かめていません。</li>
+    <li><b>アカウントとシャード:</b> 記録はアカウントとシャードの組ごとに分けて見られます（見出しの「組」）。</li>
+    <li><b>Windows の警告:</b> <code>家の記録検索.bat</code> を開いたときに「発行元を確認できませんでした」の警告が出るのは、zip の「許可する」をせずに展開したときです。もし「発行元を確認できませんでした。このソフトウェアを実行しますか?」の警告が出たら、［実行］を押せば開けます。毎回出さないようにするには、zip の「許可する」からやり直してください。「スマート アプリ コントロール」が有効な PC で止められるかは、作者は確かめていません。</li>
+    <li><b>ポート 47651:</b> ほかのソフトがこの番号を使っていると、検索ページを始められません（そう知らせます）。</li>
+    <li><b>記録と貼り付けの行の形:</b> 記録は文字のファイル（UTF-16LE）で、1 行目に <code>CPLUS_HOME_RECORD</code> と形式の番号（今は 2）が入ります。行の並びはモジュールの <code>CPlusHomeRecord.lua</code> の中の説明にあります。「ゲームで案内」がコピーする行は <code>CPLUSHOME2</code>、「家の範囲をゲームへ」がコピーする行は <code>CPLUSAREA1</code> で始まり、形は <code>CPlusHomeGuide.lua</code>・<code>CPlusHomeArea.lua</code> の中の説明にあります。</li>
+  </ul>
+
+  <h2 id="terms">11. 作り方と利用条件</h2>
+  <div class="box">
+    <p>このソフトは、Anthropic の <b>Claude Code</b>（Claude Opus 5 と Claude Opus 5.5）で、コードをすべて作りました。作者は Lua などのコードを読めません。作者が行ったのは、仕様を決めることと、ゲームでの動作の確認だけです。</p>
+    <p>Claude Code の複数のセッションに役割を分けて作りました。設計と判断を受け持つセッションが仕様をまとめて作業を指示し、実装のセッションが作り、別のセッションが確かめ、見つかったことを直す、を機能ごとに繰り返しました。公開の前には、コードを通して読む点検と、検索ページの読み出し役を実際に攻撃して確かめる点検も、別々のセッションで行いました。</p>
+  </div>
+  <ul>
+    <li>無料です。使う・改変する・配り直すのは自由です。販売はできません。</li>
+    <li>無保証です。このソフトを使って起きたことに、作者は一切の責任を負いません。</li>
+    <li>サポートはありません。不具合に気づいたときの連絡先: braunerattewkk ＠ gmail.com（＠ は半角の @ にしてください。お返事はお約束できません）</li>
+    <li>CLifeUI の作者様・Electronic Arts・Broadsword とは関係ありません。</li>
+    <li><b>自己責任でお使いください。</b>Ultima Online の規約に沿うように作っていますが、規約についての判断は各自で行ってください。</li>
+  </ul>
+  <h3>フォントについて</h3>
+  <p>アイコンの文字は、CLifeUI に入っているフォント Mgen+（ムゲンプラス）で描いています。Mgen+ は自家製フォント工房のフォント（<a href="http://jikasei.me/font/mgenplus/">http://jikasei.me/font/mgenplus/</a>）で、SIL Open Font License 1.1 のもとで使用しています。</p>
+  <h3>商標について</h3>
+  <p>記載されている会社名・製品名は、各社の商標または登録商標です。</p>
+  <h3>Ultima Online に関するコピーライトとリーガル情報</h3>
+  <p lang="en">(C) Electronic Arts Inc. Electronic Arts, EA, EA GAMES, the EA GAMES logo, Ultima, the UO logo and Britannia are trademarks or registered trademarks of Electronic Arts Inc. in the U.S. and/or other countries. All rights reserved.</p>
+  <footer>CPlusHomeRecord / CPlusHomeViewer 0.2 ・ 作者 BrauneRatte ・ 全文は LICENSE.txt</footer>
+</main>
+</body>
+</html>
