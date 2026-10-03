@@ -3591,7 +3591,7 @@ function CPlusHomeRecord.corner( n )
 	local house = Houses[ number ]
 	if ( house and house.facet ~= facet ) then
 		say( txt( TID_PREFIX ) .. houseW( number ) .. L": " .. txt( TID_FACET ) .. towstring( numA( house.facet ) )
-			.. txt( TID_OTHER_FACET ) .. towstring( "script CPlusHomeRecord.clear( " .. numA( number ) .. " )" ) )
+			.. txt( TID_OTHER_FACET ) .. againW() )
 		return
 	end
 
