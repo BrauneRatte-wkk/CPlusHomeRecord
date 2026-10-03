@@ -2,7 +2,7 @@
 
 Ultima Online Enhanced Client のカスタム UI「CLifeUI」に足して使う、非公式の追加機能です。
 
-**CLifeUI が必須です。** CLifeUI の部品を使って動くので、CLifeUI を入れていない状態や、ほかのカスタム UI では動きません。先に CLifeUI を入れて、動くことを確かめてから入れてください。CLifeUI は、作者様の公式ページ（https://uo.clife.work/uosa-custom-ui-clifeui/）の手順で入れてください。
+**CLifeUI が必須です。** CLifeUI の部品を使って動くので、CLifeUI を入れていない状態や、ほかのカスタム UI では動きません。先に CLifeUI を入れて、動くことを確かめてから入れてください。CLifeUI は、作者様の公式ページ（<https://uo.clife.work/uosa-custom-ui-clifeui/>）の手順で入れてください。
 
 自分の家でロックダウンした箱を開いて閉じると、その中身をファイルに記録します。記録は、PC のブラウザで開く検索ページで探せます。「あのアイテムはどの家の、どの箱に入れたか」を調べるためのものです。
 
@@ -82,7 +82,7 @@ Claude Code の複数のセッションに役割を分けて作りました。�
 
 ## フォントについて
 
-アイコンの文字は、CLifeUI に入っているフォント Mgen+（ムゲンプラス）で描いています。Mgen+ は自家製フォント工房のフォント（http://jikasei.me/font/mgenplus/）で、SIL Open Font License 1.1 のもとで使用しています。
+アイコンの文字は、CLifeUI に入っているフォント Mgen+（ムゲンプラス）で描いています。Mgen+ は自家製フォント工房のフォント（<http://jikasei.me/font/mgenplus/>）で、SIL Open Font License 1.1 のもとで使用しています。
 
 ## 商標について
 
