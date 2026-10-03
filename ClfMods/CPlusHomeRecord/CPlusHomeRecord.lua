@@ -23,9 +23,9 @@
 	CPlusHomeArea.lua: a line the search page copies, pasted there, registers the
 	houses the page keeps under the page's numbers ( pasteAreas ).
 
-	A house is the rectangle round all of the corners added to it, edges
-	included, on one facet. Height is not looked at: a house's floors all share
-	one rectangle.
+	A house is the rectangle round the corners added to it, edges included, on
+	one facet: two opposite corners, at most AREA.MAX_SIDE tiles a side. Height
+	is not looked at: a house's floors all share one rectangle.
 
 	The houses are registered on each character, and a house's number is only
 	that character's. Every record carries the area of its house ( areaRow ),
@@ -132,7 +132,7 @@ CPlusHomeRecord.ItemUseRequest_org = nil
 	all: CPlusHomeRecord is then nil, nothing is recorded and the icon does
 	nothing. Keep them under 190, with room to spare. A new constant goes
 	into the table of its
-	kind ( DECIDED, CABINET, BOOK_PAGE, BOOK_BACK, CODE, TID_MENU, TID_PASTE )
+	kind ( DECIDED, CABINET, BOOK_PAGE, BOOK_BACK, CODE, TID_MENU, TID_PASTE, TID_AREA )
 	rather than a local of its own.
 ]]
 
@@ -144,6 +144,17 @@ CPlusHomeRecord.ItemUseRequest_org = nil
 	Each house keeps its own setting keys by number.
 ]]
 local MAX_HOUSES = 9
+
+--[[
+	How large a house's area can be: at most MAX_SIDE tiles from side to side,
+	along x and along y alike, its edges counted ( x 1000 to 1039 is 40 ), and
+	at most MAX_CORNERS corners - two opposite corners make the rectangle.
+	The largest house in UO is some 30 tiles a side.
+
+	CPlusHomeArea.lua reads these from here ( CPlusHomeRecord.areaFits ), so
+	the pasted areas keep to the same limit.
+]]
+CPlusHomeRecord.AREA = { MAX_SIDE = 40, MAX_CORNERS = 2 }
 
 --[[
 	How far up the chain of containers to look for a locked down one, counting
@@ -265,6 +276,11 @@ local TID_BOOK_UNGROUPED_TAIL = 1163
 
 -- What pasting the areas says in chat ( CPlusHomeRecord.pasteAreas ).
 local TID_PASTE = { DONE = 1125, CLEARED = 1126, OVERLAP = 1127 }
+-- A corner not added, and the hint after a second corner on the same line:
+-- FULL, then how many, then FULL_TAIL / WIDE, then how many tiles, then
+-- WIDE_TAIL, then the area as it is / LINE. Each then ends with AGAIN, the
+-- menu item that clears a house, and AGAIN_TAIL.
+local TID_AREA = { FULL = 1164, FULL_TAIL = 1165, WIDE = 1166, WIDE_TAIL = 1167, LINE = 1168, AGAIN = 1169, AGAIN_TAIL = 1170 }
 
 local TAB = L"\t"
 local NL = L"\r\n"
@@ -570,6 +586,19 @@ local function inArea( area, x, y, facet )
 end
 
 
+--[[
+	Whether an area - { minX, maxX, minY, maxY } - is no wider and no taller
+	than AREA.MAX_SIDE tiles, edges included. An area whose from is past its
+	to does not fit. For the corners added here, the areas pasted here and
+	the paste window ( CPlusHomeArea.lua ).
+]]
+function CPlusHomeRecord.areaFits( area )
+	local side = CPlusHomeRecord.AREA.MAX_SIDE
+	return area.minX <= area.maxX and area.minY <= area.maxY
+		and area.maxX - area.minX + 1 <= side and area.maxY - area.minY + 1 <= side
+end
+
+
 -- The first registered house the point is inside, edges included, or nil.
 local function houseAt( x, y, facet )
 	for n = 1, MAX_HOUSES do
@@ -603,6 +632,13 @@ local function houseSummaryW( house )
 		.. SEPARATOR .. txt( TID_FACET ) .. towstring( numA( house.facet ) )
 		.. SEPARATOR .. txt( TID_RANGE_X ) .. towstring( numA( house.minX ) .. "-" .. numA( house.maxX ) )
 		.. SEPARATOR .. txt( TID_RANGE_Y ) .. towstring( numA( house.minY ) .. "-" .. numA( house.maxY ) )
+end
+
+
+-- How to register a house again: clear it with the menu item, then add its
+-- corners. The end of what corner says when it does not add one.
+local function againW()
+	return txt( TID_AREA.AGAIN ) .. txt( TID_MENU.CLEAR ) .. txt( TID_AREA.AGAIN_TAIL )
 end
 
 
@@ -3532,6 +3568,13 @@ end
 
 --[[
 ** Add where you stand as a corner of house n ( script CPlusHomeRecord.corner( 1 ) )
+*
+*  The house's area is the rectangle round its corners. A corner is not added -
+*  nothing changes, and chat says why - when the house has AREA.MAX_CORNERS
+*  already, or when the area would grow past AREA.MAX_SIDE tiles a side
+*  ( areaFits ). A house registered larger, or with more corners, stays as it
+*  is. When the last corner leaves the area one tile wide, chat says to choose
+*  opposite corners.
 ]]
 function CPlusHomeRecord.corner( n )
 	local number = houseNumber( n )
@@ -3552,19 +3595,35 @@ function CPlusHomeRecord.corner( n )
 		return
 	end
 
-	if ( house == nil ) then
-		house = { corners = 0, facet = facet, minX = x, maxX = x, minY = y, maxY = y }
+	local limit = CPlusHomeRecord.AREA
+	if ( house and house.corners >= limit.MAX_CORNERS ) then
+		say( txt( TID_PREFIX ) .. houseW( number ) .. txt( TID_AREA.FULL ) .. towstring( numA( limit.MAX_CORNERS ) )
+			.. txt( TID_AREA.FULL_TAIL ) .. againW() )
+		return
 	end
-	house.corners = house.corners + 1
-	house.minX = math.min( house.minX, x )
-	house.maxX = math.max( house.maxX, x )
-	house.minY = math.min( house.minY, y )
-	house.maxY = math.max( house.maxY, y )
 
-	Houses[ number ] = house
-	saveHouse( number, house )
+	-- A new table, so that a corner refused leaves the house as it was.
+	local grown = { corners = 1, facet = facet, minX = x, maxX = x, minY = y, maxY = y }
+	if ( house ) then
+		grown.corners = house.corners + 1
+		grown.minX = math.min( house.minX, x )
+		grown.maxX = math.max( house.maxX, x )
+		grown.minY = math.min( house.minY, y )
+		grown.maxY = math.max( house.maxY, y )
+	end
+	if ( not CPlusHomeRecord.areaFits( grown ) ) then
+		say( txt( TID_PREFIX ) .. houseW( number ) .. txt( TID_AREA.WIDE ) .. towstring( numA( limit.MAX_SIDE ) )
+			.. txt( TID_AREA.WIDE_TAIL ) .. houseSummaryW( house ) .. againW() )
+		return
+	end
 
-	say( txt( TID_PREFIX ) .. houseW( number ) .. txt( TID_CORNER_ADDED ) .. SEPARATOR .. houseSummaryW( house ) )
+	Houses[ number ] = grown
+	saveHouse( number, grown )
+
+	say( txt( TID_PREFIX ) .. houseW( number ) .. txt( TID_CORNER_ADDED ) .. SEPARATOR .. houseSummaryW( grown ) )
+	if ( grown.corners == limit.MAX_CORNERS and ( grown.minX == grown.maxX or grown.minY == grown.maxY ) ) then
+		say( txt( TID_PREFIX ) .. houseW( number ) .. txt( TID_AREA.LINE ) .. againW() )
+	end
 end
 
 
@@ -3660,7 +3719,8 @@ end
 *  - recording is turned on.
 *
 *  A list with anything in it that is not a house under a number 1 to
-*  MAX_HOUSES, or with a number twice, is refused whole: nothing changes and
+*  MAX_HOUSES, with a number twice, or with a house wider or taller than
+*  AREA.MAX_SIDE tiles ( areaFits ), is refused whole: nothing changes and
 *  the answer is false. Otherwise chat has a line for each house registered
 *  and for each cleared, then one for recording, and the answer is true.
 ]]
@@ -3674,7 +3734,8 @@ function CPlusHomeRecord.pasteAreas( list )
 		if ( type( house ) ~= "table" or type( house.n ) ~= "number" or house.n ~= math.floor( house.n )
 			or house.n < 1 or house.n > MAX_HOUSES or inList[ house.n ]
 			or type( house.facet ) ~= "number" or type( house.minX ) ~= "number" or type( house.maxX ) ~= "number"
-			or type( house.minY ) ~= "number" or type( house.maxY ) ~= "number" ) then
+			or type( house.minY ) ~= "number" or type( house.maxY ) ~= "number"
+			or not CPlusHomeRecord.areaFits( house ) ) then
 			return false
 		end
 		inList[ house.n ] = true

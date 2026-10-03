@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ModuleFile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-	<UiMod name="CPlusHomeRecord" version="0.2" date="10/02/2026">
+	<UiMod name="CPlusHomeRecord" version="0.3" date="10/03/2026">
 
 		<Author name="BrauneRatte" />
 		<Description text="Writes out what is in the locked down containers of your own houses when you close them" />

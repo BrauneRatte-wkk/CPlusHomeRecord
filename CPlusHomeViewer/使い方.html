@@ -82,8 +82,8 @@
   </ul>
   <p>配る物は 2 つの zip に分かれています。</p>
   <table>
-    <tr><th>CPlusHomeRecord-0.2.zip</th><td>ゲームの中で記録する部分（モジュール）。CLifeUI の <code>ClfMods</code> フォルダの中に入れます。</td></tr>
-    <tr><th>CPlusHomeViewer-0.2.zip</th><td>記録を探す検索ページと、その読み出し役（ビューアー）。ゲームのフォルダの外の、好きな場所（ドキュメントなど）に置きます。</td></tr>
+    <tr><th>CPlusHomeRecord-0.3.zip</th><td>ゲームの中で記録する部分（モジュール）。CLifeUI の <code>ClfMods</code> フォルダの中に入れます。</td></tr>
+    <tr><th>CPlusHomeViewer-0.3.zip</th><td>記録を探す検索ページと、その読み出し役（ビューアー）。ゲームのフォルダの外の、好きな場所（ドキュメントなど）に置きます。</td></tr>
   </table>
 
   <h2 id="parts">2. しくみ（構成図）</h2>
@@ -154,7 +154,7 @@
   <h2 id="install">4. 入れ方</h2>
   <ol class="steps">
     <li><b>2 つの zip の「許可する」に印を付けてから展開します。</b>それぞれの zip を右クリック →「プロパティ」→ 下の「セキュリティ: 許可する」に印を付けて OK。こうしないと、ネットから来たファイルとして、検索ページを開くときに警告が出ます。もし「発行元を確認できませんでした。このソフトウェアを実行しますか?」の警告が出たら、［実行］を押せば開けます。毎回出さないようにするには、zip の「許可する」からやり直してください。</li>
-    <li><b>モジュールを CLifeUI の中に入れます。</b><code>CPlusHomeRecord-0.2.zip</code> を展開してできた <code>ClfMods\CPlusHomeRecord</code> を、CLifeUI の <code>ClfMods</code> フォルダの中に入れます。
+    <li><b>モジュールを CLifeUI の中に入れます。</b><code>CPlusHomeRecord-0.3.zip</code> を展開してできた <code>ClfMods\CPlusHomeRecord</code> を、CLifeUI の <code>ClfMods</code> フォルダの中に入れます。
 <pre>C:\Program Files (x86)\Electronic Arts\Ultima Online Enhanced\
   UserInterface\
     &lt;CLifeUI のフォルダ&gt;\    ← 名前は自由（公式の手順では ClifeUI-master）
@@ -168,8 +168,8 @@
     CPlusExport\              ← 家の記録の記録が入るフォルダ（自分で作る）</pre>
       Program Files の下なので、コピーのときに管理者の確認が出ます。</li>
     <li><b>記録のフォルダを作ります。</b><span class="path">…\Ultima Online Enhanced\logs</span> の中に <code>CPlusExport</code> フォルダを作ります。家の記録の専用のフォルダです（CLifeUI の公式の手順で作る <code>damage</code>・<code>animalLore</code> フォルダと同じ <code>logs</code> の中）。<b>必ず作ってください。</b>ゲームはこのフォルダを自動では作りません。無いと、チャットには「家の記録: …」と記録したように出ても、ファイルは作られず、エラーも出ません。検索ページを開くと赤い枠で知らせるので、そこで気づけます。フォルダを作れば、検索ページはそのまま回復します（それまでの記録は残っていません）。</li>
-    <li><b>（整理削除を使うなら）記録のフォルダに書き込みの権限を付けます。</b>検索ページの［整理削除］で古い記録を消すには、あなたの Windows のアカウントに、このフォルダの「変更」の権限が要ります。<code>CPlusExport</code> フォルダを右クリック →「プロパティ」→「セキュリティ」→「編集」→ 一覧から自分の名前（Windows にサインインしている名前）を選んで「変更」に印を付けます（一覧に無ければ「追加」で自分の名前を足します）。権限を付けなくても、記録と検索はできます。</li>
-    <li><b>ビューアーを好きな場所に置きます。</b><code>CPlusHomeViewer-0.2.zip</code> を展開してできた <code>CPlusHomeViewer</code> フォルダを、ゲームのフォルダの外の好きな場所（ドキュメントなど）に置きます。フォルダ 1 つにまとまっているので、そのまま置けば済みます。</li>
+    <li><b>（整理削除を使うなら）記録のフォルダに書き込みの権限を付けます。</b>検索ページの［整理削除］で古い記録を消すには、あなたの Windows のアカウントに、このフォルダの「変更」の権限が要ります。<code>CPlusExport</code> フォルダを右クリック →「プロパティ」→「セキュリティ」→「編集」→ 一覧から自分の名前（Windows にサインインしている名前）を選び、「変更」の「許可」に印を付けて OK を押します。プロパティの窓に戻ったら、そこでも OK を押します（一覧に無ければ「追加」で自分の名前を足します）。権限を付けなくても、記録と検索はできます。</li>
+    <li><b>ビューアーを好きな場所に置きます。</b><code>CPlusHomeViewer-0.3.zip</code> を展開してできた <code>CPlusHomeViewer</code> フォルダを、ゲームのフォルダの外の好きな場所（ドキュメントなど）に置きます。フォルダ 1 つにまとまっているので、そのまま置けば済みます。</li>
     <li><b>ゲームを起動します。</b>ログインすると、チャットに <code>CPlusHomeRecord : initialized (ON)</code> と出ます。</li>
   </ol>
 
@@ -185,7 +185,7 @@
   <ol class="steps">
     <li>家の敷地の角に立ちます。</li>
     <li>「家の記録」アイコンを右クリック →「角を足す」→「家 1」。</li>
-    <li>反対側の角にも立って、同じく「角を足す」→「家 1」。角を足すたびに、足した角を全部囲む四角が家の範囲になります（高さは見ません）。</li>
+    <li>向かい合う角（対角）にも立って、同じく「角を足す」→「家 1」。2 か所を結んだ四角が家の範囲になります（高さは見ません）。範囲は横も縦も一辺 40 マスまで、角は 2 か所までです（3 か所目は足せません）。同じ列や同じ行の 2 か所だと幅 1 マスの線になるので、対角を選んでください。登録し直すときは、右クリック →「家を消す」で消してから、もう一度 2 か所を登録します。</li>
     <li>アイコンを左クリックして、範囲が合っているか確かめます。</li>
   </ol>
   <p>家は 9 軒まで登録できます。登録はキャラクターごとです。まちがえたら、右クリック →「家を消す」でやり直します。</p>
@@ -325,7 +325,7 @@
   <p>記載されている会社名・製品名は、各社の商標または登録商標です。</p>
   <h3>Ultima Online に関するコピーライトとリーガル情報</h3>
   <p lang="en">(C) Electronic Arts Inc. Electronic Arts, EA, EA GAMES, the EA GAMES logo, Ultima, the UO logo and Britannia are trademarks or registered trademarks of Electronic Arts Inc. in the U.S. and/or other countries. All rights reserved.</p>
-  <footer>CPlusHomeRecord / CPlusHomeViewer 0.2 ・ 作者 BrauneRatte ・ 全文は LICENSE.txt</footer>
+  <footer>CPlusHomeRecord / CPlusHomeViewer 0.3 ・ 作者 BrauneRatte ・ 全文は LICENSE.txt</footer>
 </main>
 </body>
 </html>

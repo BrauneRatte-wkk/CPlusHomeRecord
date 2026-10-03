@@ -23,9 +23,13 @@
 	  - every other registered house is left as it is;
 	  - recording is turned on.
 
-	A line any part of which cannot be read registers nothing, and the window
-	says why. A guide text ( CPlusHomeGuide.lua ) pasted here is told which
-	window takes it, as this line pasted in the guide's window is.
+	A line any part of which cannot be read, or with a house wider or taller
+	than a house can be registered ( CPlusHomeRecord.AREA ), registers
+	nothing, and the window says why. A guide text ( CPlusHomeGuide.lua )
+	pasted here is told which window takes it, as this line pasted in the
+	guide's window is. Whatever is refused, the window stays open with the box
+	emptied and the keys in it, so that a line copied again goes in with
+	Ctrl+V and Enter.
 
 	  script CPlusHomeArea.open()   -- open the window ( the menu item )
 
@@ -75,6 +79,9 @@ local TID_GUIDE_LINE = 1131
 local TID_BAD_COUNT = 1132
 local TID_BAD_HOUSE = 1133          -- then which house of the line it is, from the left, then TID_BAD_HOUSE_TAIL
 local TID_BAD_HOUSE_TAIL = 1134
+local TID_WIDE_HOUSE = 1171         -- then which house, then TID_WIDE_HOUSE_MID, the most tiles a side, TID_WIDE_HOUSE_TAIL
+local TID_WIDE_HOUSE_MID = 1172
+local TID_WIDE_HOUSE_TAIL = 1173
 
 
 ----------------------------------------------------------------
@@ -148,10 +155,11 @@ end
 
 --[[
 	The houses in a pasted line, in the order of the line - or nil and why not:
-	a tid, and for a house that cannot be read, which house of the line it is,
-	counted from the left. Only a line every part of which reads gives houses:
-	nothing is taken from a line read halfway. Whatever is wrong, nothing
-	fails.
+	a tid, and for a house that cannot be read, or is wider or taller than a
+	house can be registered ( CPlusHomeRecord.areaFits ), which house of the
+	line it is, counted from the left. Only a line every part of which reads
+	gives houses: nothing is taken from a line read halfway. Whatever is
+	wrong, nothing fails.
 ]]
 local function parseAreas( text )
 	if ( type( text ) ~= "wstring" or text == L"" ) then
@@ -186,6 +194,9 @@ local function parseAreas( text )
 		local house = houseIn( words, at )
 		if ( house == nil or seen[ house.n ] ) then
 			return nil, TID_BAD_HOUSE, #houses + 1
+		end
+		if ( not CPlusHomeRecord.areaFits( house ) ) then
+			return nil, TID_WIDE_HOUSE, #houses + 1
 		end
 		seen[ house.n ] = true
 		houses[ #houses + 1 ] = house
@@ -261,31 +272,46 @@ function CPlusHomeArea.close()
 end
 
 
+-- The box emptied, with the keys in it, as open() leaves it: a line copied
+-- again goes in with Ctrl+V on its own, not after what was refused.
+local function clearInput()
+	pcall( TextEditBoxSetText, INPUT, L"" )
+	pcall( WindowAssignFocus, INPUT, true )
+end
+
+
 --[[
 ** Enter in the box: register the houses of the pasted line on this character,
 *  then close the window. A line that cannot be read changes nothing: why is
 *  said on the state line and in chat, and the window stays open. When reading
-*  the box, or registering, fails, that is said as a failure.
+*  the box, or registering, fails, that is said as a failure. Whenever the
+*  window stays open, the box is emptied and keeps the keys ( clearInput ).
 ]]
 function CPlusHomeArea.onEnter()
 	local ok, text = pcall( TextEditBoxGetText, INPUT )
 	if ( not ok or type( text ) ~= "wstring" ) then
 		-- What it threw, or, when it gave something that is not wide text, its type.
 		sayFailed( "TextEditBoxGetText", ok and ( "not a wstring: " .. type( text ) ) or text )
+		clearInput()
 		return
 	end
 	local okParse, houses, refusal, which = pcall( parseAreas, text )
 	if ( not okParse ) then
 		sayFailed( "parseAreas", houses )
+		clearInput()
 		return
 	end
 	if ( houses == nil ) then
 		local why = txt( refusal )
 		if ( refusal == TID_BAD_HOUSE ) then
 			why = why .. towstring( tostring( which ) ) .. txt( TID_BAD_HOUSE_TAIL )
+		elseif ( refusal == TID_WIDE_HOUSE ) then
+			why = why .. towstring( tostring( which ) ) .. txt( TID_WIDE_HOUSE_MID )
+				.. towstring( tostring( CPlusHomeRecord.AREA.MAX_SIDE ) ) .. txt( TID_WIDE_HOUSE_TAIL )
 		end
 		setLabel( "State", why )
 		say( why )
+		clearInput()
 		return
 	end
 	-- Through a function, so that a missing CPlusHomeRecord fails inside pcall too.
@@ -294,6 +320,7 @@ function CPlusHomeArea.onEnter()
 	end )
 	if ( not okPaste or pasted ~= true ) then
 		sayFailed( "pasteAreas", okPaste and "refused" or pasted )
+		clearInput()
 		return
 	end
 	CPlusHomeArea.close()
