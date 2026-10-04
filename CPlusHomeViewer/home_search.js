@@ -43,6 +43,12 @@
   // $MaxDeleteNames ), so a press deletes the oldest this many and the next press the next ( tidySplit ).
   const DELETE_AT_ONCE = 500;
   const READER_LOST = "読み出し役に届きません。『家の記録検索.bat』から開き直してください";
+  // 箱の一覧: a box whose last record is older than this many days has that time in red. About a month without the box
+  // being opened is long enough to ask whether it is still there; the red only marks it, nothing is deleted by it.
+  const STALE_DAYS = 30;
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  // The most rows a table of boxes draws at once (名前の設定's box names, 箱の一覧): a longer list is narrowed by its filters.
+  const BOX_ROWS_MAX = 300;
 
   const $ = id => document.getElementById(id);
   const collator = new Intl.Collator("ja");
@@ -110,6 +116,15 @@
     trans: { group: null, skill: null } };
   // What /api/chars answered: the accounts on this PC with their shards and characters.
   let charTree = { accounts: [] };
+  // 箱の一覧: the house chosen (null: 全部), the words typed, the order ("old": the oldest last record first, anything
+  // else: by place), and the box a card was followed from (its key), marked in the list. Kept while the page is open.
+  const boxView = { house: null, q: "", sort: "place", focus: null };
+  // Each box standing on the floor (its key) -> the newest closing time of its records and of those of every box shown
+  // inside it: filled at every rebuild.
+  let lastClosed = new Map();
+  // A scroll book's or a Davies' locker's key -> how many rows it has in the results (a scroll's grade and skill, a map or
+  // a SOS): what choosing its kind of box in 検索 lists. Filled at every rebuild.
+  let rowsIn = new Map();
   // The character numbers the records carry, id -> { name, records, last }: filled at every rebuild.
   let charsSeen = new Map();
   // The characters whose older numbers are open in 名前の設定, by their assignment. Kept only while the
@@ -245,6 +260,14 @@
   }
   function hideAlert() { $("alert").hidden = true; measureHeader(); }
   function showBar(id, text) { $(id).textContent = text; $(id).hidden = !text; measureHeader(); }
+  // A bar saying what was done, and under it, each on a line of its own and marked to stand out (.todo), what the player
+  // is to do next - so that it is not read past as part of the report. Text only: a name the player gave is never markup.
+  function showBarTodo(id, text, todo) {
+    const lines = todo.filter(Boolean);
+    $(id).replaceChildren(text, ...lines.map(line => el("div", "todo", line)));
+    $(id).hidden = !text && !lines.length;
+    measureHeader();
+  }
 
   let noticeTimer = 0;
   function notice(text, lasting) {
@@ -482,6 +505,9 @@
   const TIDY_USED_WHY = "（読みかけのスクロールブック・宝石箱の前の記録など）";
   const TIDY_WAIT_TEXT = "名前のファイルをまだ読めていないので、何も消していません。どの記録が同じアカウントのものか分からないためです。" +
     "読めてから、もう一度［整理削除］を押してください。";
+  // Said when not one record could be deleted ( 整理削除, 記録を消す, この家の記録を消す ).
+  const NOTHING_DELETED = "1 本も消せていません。上の理由をお読みください（ゲームやほかのソフトがその記録を開いているとき、" +
+    "記録のフォルダに書けないときに出ます）。『家の記録検索.bat』から開き直すと直ることもあります。";
   let tidyPlan = null;
   // What one press offers: of the older records, the ones whose deleting changes nothing on the page, and the ones kept
   // because the page still uses them ( a scroll book's earlier readings laid under the newest, a jewel box's earlier
@@ -533,7 +559,7 @@
     return { drop, used, more: freed.flat().length - drop.length };
   }
   function tidyAsk() {
-    tidyPlan = null;
+    dropQuestions();
     if (!namesLoaded) { showBar("tidyBar", TIDY_WAIT_TEXT); return; }
     const older = olderRecords(Date.now());
     if (!older.length) { showBar("tidyBar", "古い記録はありません。"); return; }
@@ -585,7 +611,7 @@
       res = await ask(API_DELETE, { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ names }) });
     } catch (e) {
-      if (!(e && e.lost)) throw e;
+      if (!(e && e.lost)) { showBar("tidyBar", answerUnread(e)); return; }
       showBar("tidyBar", "読み出し役に届かないので、何も消せませんでした。『家の記録検索.bat』から開き直してください。");
       return;
     }
@@ -594,23 +620,329 @@
       showBar("tidyBar", "読み出し役が消せませんでした（HTTP " + res.status + (detail ? ": " + detail : "") + "）。");
       return;
     }
-    const got = await res.json();
+    let got;
+    try {
+      got = await deleteAnswer(res);
+    } catch (e) {
+      showBar("tidyBar", answerUnread(e));
+      return;
+    }
     for (const name of got.deleted || []) files.delete(name);
     const failed = got.failed || [];
     const done = (got.deleted || []).length;
     // When not one of them went, the reasons above are the whole answer - so say where to look
     // next rather than leaving the player with a list. The reason itself is not guessed at here: a record
     // can be open in another program, or the folder can be one this reader may not write.
-    const nextStep = (done === 0 && failed.length)
-      ? "1 本も消せていません。上の理由をお読みください（ゲームやほかのソフトがその記録を開いているとき、" +
-        "記録のフォルダに書けないときに出ます）。『家の記録検索.bat』から開き直すと直ることもあります。"
-      : "";
+    const nextStep = (done === 0 && failed.length) ? NOTHING_DELETED : "";
     showBar("tidyBar", "古い記録 " + done + " 本を消しました。" +
       (split.used.length ? split.used.length + " 本は今の表示で使われているので残しました" + TIDY_USED_WHY + "。" : "") +
       (failed.length ? "消せなかったものが " + failed.length + " 本あります: " +
         failed.slice(0, 3).map(f => f.name + "（" + f.detail + "）").join("、") + (failed.length > 3 ? " ほか" : "") : "") +
       nextStep);
     rebuild();
+  }
+
+  // ---- 記録を消す: a box's records (箱の一覧), a house's (名前の設定)
+  //
+  // For a house gone, or a box no longer locked down: the game records nothing of it any more, so its last records stay
+  // on the page however long. Only while a pair is looked at, which says whose records go: under 全部を見る a box is
+  // shown from whichever account's record is newest. What goes is worked out when the button is pressed, from the
+  // records as they are then. The results are said in 整理削除's bar.
+  const PAIR_ONLY = "全部を見るでは消せません。上の「組」で組を選ぶと消せます";
+  const GAME_CLEAR = "ゲーム内でも、この家を登録した各キャラクターで、家の記録アイコンを右クリック →『家を消す』をしてください。";
+  // The records of the boxes standing on the floor that atTop takes, as the records are now: every record of each of
+  // them, the older ones too, and every record of each box shown inside one. The pair's records only, put together as
+  // rebuild puts them for the pair, so the boxes are the ones the page shows. { names: sorted, tops: how many boxes }.
+  // ownHouse ( a house's number, or null ): besides, every record of the pair whose own house ( houseOf ) is that one -
+  // a bag's older record from before it was taken to another house, which would otherwise teach the table the house's
+  // area again ( learnHouses ) - but none that a box standing elsewhere is shown from: the record it is read from, a
+  // book's every record ( they are laid over each other ) and a jewel box's older record an item still comes from.
+  // A pair's readable records as the page reads them now, put together as rebuild puts them for that pair: { records,
+  // reading ( CPlusHomeParse.combine's ), keyOf ( the box a record is of, in that reading ) }.
+  function pairReading(pair) {
+    const world = worldFor(false);
+    const records = readableRecords().filter(rec => pairOfBox(rec.parsed.box) === pair);
+    return { records, reading: CPlusHomeParse.combine(records, world), keyOf: rec => CPlusHomeParse.recordKey(world(rec), rec) };
+  }
+  // pair: whose records ( the pair looked at, or another of its shard - see sameShardPairs ).
+  function recordsOfTops(atTop, ownHouse = null, pair = state.pair) {
+    const { records, reading, keyOf } = pairReading(pair);
+    const shown = reading.boxes;
+    const inside = new Set(shown.filter(b => atTop(b.top)).map(b => b.key));
+    const elsewhere = new Map(shown.filter(b => !atTop(b.top)).map(b => [b.key, b]));
+    const usedElsewhere = new Set([...elsewhere.values()].map(b => b.file));
+    for (const rec of records) if (elsewhere.has(keyOf(rec)) && elsewhere.get(keyOf(rec)).book) usedElsewhere.add(rec.name);
+    for (const it of reading.items) if (it.from && elsewhere.has(it.boxKey)) usedElsewhere.add(it.from.file);
+    const taken = rec => inside.has(keyOf(rec)) ||
+      (ownHouse !== null && !usedElsewhere.has(rec.name) && houseOf(rec.parsed.box).n === ownHouse);
+    const tops = shown.filter(b => b === b.top && atTop(b));
+    return { names: withSplitMemo(() => records.filter(taken)).map(rec => rec.name).sort(), tops: tops.length,
+      houses: [...new Set(tops.map(b => b.house))] };
+  }
+  // What /api/delete answered: { deleted: [names], failed: [{ name, detail }] }. An answer that does not read as that
+  // throws, and is said ( answerUnread ) rather than left to stop the bar at 「消しています…」.
+  async function deleteAnswer(res) {
+    const got = await res.json();
+    if (!got || typeof got !== "object" || !Array.isArray(got.deleted || []) || !Array.isArray(got.failed || [])) {
+      throw new Error("消した記録の一覧がありません");
+    }
+    return got;
+  }
+  // The reader's answer to a deleting could not be read, or something unlooked-for went wrong: said, and nothing more is
+  // sent. What was deleted before it is off the page; the rest is put right when the records are read again.
+  const answerUnread = e => "読み出し役の返事を読めませんでした（" + String(e && e.message || e) + "）。ここで止めました。" +
+    "消えた記録は、記録を読み直すと画面から外れます。";
+  // Every question waiting for its 消す ( 整理削除, 記録を消す, この家の記録を消す ) dropped and its bar closed: what it
+  // asked about is not what the page shows any more ( another pair chosen, a number assigned or let go, another asked ).
+  function dropQuestions() {
+    if (tidyPlan || housePlan || boxPlan) showBar("tidyBar", "");
+    tidyPlan = null;
+    housePlan = null;
+    boxPlan = null;
+  }
+  // Deletes the records named, DELETE_AT_ONCE a request ( the reader takes no more in one ), and takes those deleted
+  // off the page. { deleted, failed: [{ name, detail }], stopped: why a request did not go through, after which none is
+  // sent, or "" }.
+  async function deleteRecords(list) {
+    const deleted = [], failed = [];
+    for (let at = 0; at < list.length; at += DELETE_AT_ONCE) {
+      let res;
+      try {
+        res = await ask(API_DELETE, { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ names: list.slice(at, at + DELETE_AT_ONCE) }) });
+      } catch (e) {
+        if (!(e && e.lost)) return { deleted, failed, stopped: answerUnread(e) };
+        return { deleted, failed, stopped: "読み出し役に届かないので、そこで止めました。『家の記録検索.bat』から開き直してください。" };
+      }
+      if (!res.ok) {
+        const detail = await detailOf(res);
+        return { deleted, failed, stopped: "読み出し役が消せませんでした（HTTP " + res.status + (detail ? ": " + detail : "") + "）。" };
+      }
+      let got;
+      try {
+        got = await deleteAnswer(res);
+      } catch (e) {
+        return { deleted, failed, stopped: answerUnread(e) };
+      }
+      for (const name of got.deleted || []) {
+        files.delete(name);
+        deleted.push(name);
+      }
+      failed.push(...(got.failed || []));
+    }
+    return { deleted, failed, stopped: "" };
+  }
+  // What could not be deleted, and where to look when nothing could, as 整理削除 says it.
+  const deletedTail = ({ deleted, failed, stopped }) =>
+    (failed.length ? "消せなかったものが " + failed.length + " 本あります: " +
+      failed.slice(0, 3).map(f => f.name + "（" + f.detail + "）").join("、") + (failed.length > 3 ? " ほか" : "") + "。" : "") +
+    stopped + (deleted.length === 0 && failed.length ? NOTHING_DELETED : "");
+
+  // The other pairs of the shard of pair, among those given: a box's number is one shard's, so another account's box of
+  // that number on the same shard is the same box ( a house used together ); another shard's is another box. Pairs
+  // nobody has assigned a record to are not among them.
+  // Whether two areas from two pairs' tables ( or a record's area line ) are one house: on one facet, each holding the
+  // other's middle. A tile shared is not enough: an area registered by its corners can take in a tile of the house next
+  // door, and that house's locker or records would be taken for this one's. Inside one pair a house is still told by
+  // overlapping ( houseOf, learnHouses ), which this does not change.
+  const middleIn = (a, b) => {
+    const x = (b.minX + b.maxX) / 2, y = (b.minY + b.maxY) / 2;
+    return x >= a.minX && x <= a.maxX && y >= a.minY && y <= a.maxY;
+  };
+  const sameHouseAcross = (a, b) => !!a && !!b && a.facet === b.facet && middleIn(a, b) && middleIn(b, a);
+  const sameShardPairs = (pair, pairs) => [...new Set(pairs)]
+    .filter(p => p !== pair && p !== PAIR_UNASSIGNED && shardOf(p) === shardOf(pair)).sort(collator.compare);
+  const pairsText = pairs => pairs.map(assignmentLabel).join("、");
+  // Which box of another pair's is the same box as top ( a box standing on the floor in the pair looked at ): the same
+  // number - or, for a Davies' locker, which the page keeps one a house, the locker of a house of that pair that is the
+  // house top's locker is in ( sameHouseAcross: a pair's table can hold the same house with numbers a tile apart ).
+  const sameBoxAs = top => (top.locker
+    ? b => !!b.locker && sameHouseAcross(b.houseArea, top.houseArea)
+    : b => !b.locker && b.id === top.id);
+  // What 記録を消す takes for the box of key: { own: this pair's records, others: [{ pair, names }] of the other pairs of
+  // the shard holding the same box - each with the boxes shown inside it in that pair - and names: all of them, sorted }.
+  // null when the box is not on the page any more.
+  function boxRecordsEverywhere(key) {
+    const top = boxById.get(key);
+    if (!top) return null;
+    const own = recordsOfTops(t => t.key === key).names;
+    const pairs = [...files.values()].filter(f => f.parsed.status === "ok").map(f => pairOfBox(f.parsed.box)).filter(Boolean);
+    const others = sameShardPairs(state.pair, pairs).map(pair => {
+      const found = recordsOfTops(sameBoxAs(top), null, pair);
+      return { pair, names: found.names, houses: found.houses };
+    })
+      .filter(o => o.names.length);
+    return { own, others, names: own.concat(...others.map(o => o.names)).sort(), house: top.house, top };
+  }
+
+  // 箱の一覧's 記録を消す: no question first - a box still there is recorded again by opening it - unless other pairs of
+  // the shard have recorded the same box too: then asked once, naming them, and their records go as well. The box's name
+  // (names.boxes) stays, every pair's, so that a box locked down again comes back under it.
+  let boxPlan = null;
+  async function deleteBoxRecords(key, label) {
+    tidyPlan = null;
+    housePlan = null;
+    boxPlan = null;
+    if (state.pair === PAIR_ALL) { showBar("tidyBar", PAIR_ONLY + "。"); return; }
+    const found = boxRecordsEverywhere(key);
+    if (!found || !found.names.length) {
+      showBar("tidyBar", "「" + label + "」の記録は見つかりませんでした（もう消えています）。");
+      rebuild();
+      return;
+    }
+    if (!found.others.length) {
+      await deleteBoxNames(found, label);
+      return;
+    }
+    boxPlan = { pair: state.pair, key, label, names: found.names };
+    const bar = $("tidyBar");
+    bar.replaceChildren("「" + label + "」はほかの組（" + pairsText(found.others.map(o => o.pair)) + "）でも記録されています。" +
+      "この組の記録 " + found.own.length + " 本と、ほかの組の記録 " + (found.names.length - found.own.length) + " 本を消します。 ");
+    const go = el("button", "", "消す");
+    go.addEventListener("click", () => boxDelete());
+    const stop = el("button", "", "やめる");
+    stop.addEventListener("click", () => { boxPlan = null; showBar("tidyBar", ""); });
+    bar.append(go, " ", stop);
+    bar.hidden = false;
+    measureHeader();
+  }
+  // The second press, counted again as houseDelete counts.
+  async function boxDelete() {
+    if (!boxPlan) return;
+    const plan = boxPlan;
+    boxPlan = null;
+    const now = state.pair === plan.pair ? boxRecordsEverywhere(plan.key) : null;
+    if (!now || now.names.length !== plan.names.length || now.names.some((name, i) => name !== plan.names[i])) {
+      showBar("tidyBar", "そのあいだに記録が変わったので、何も消していません。もう一度［記録を消す］を押してください。");
+      return;
+    }
+    await deleteBoxNames(now, plan.label);
+  }
+  async function deleteBoxNames(found, label) {
+    showBar("tidyBar", "消しています…");
+    const result = await deleteRecords(found.names);
+    const theirs = new Set(found.others.flatMap(o => o.names));
+    const theirsDeleted = result.deleted.filter(name => theirs.has(name)).length;
+    // A house of a pair's table left with no box: its area and names stay until この家の記録を消す takes them, which its
+    // card in 名前の設定 still offers ( drawNameRows ) - said here, for this pair's house and for another pair's.
+    const emptied = (pair, h) => h !== null && h !== undefined && tableHouses(pair).some(t => t.n === h) &&
+      recordsOfTops(t => t.house === h, null, pair).tops === 0;
+    const othersEmptied = found.others.filter(o => o.houses.some(h => emptied(o.pair, h))).map(o => o.pair);
+    showBarTodo("tidyBar", "「" + label + "」の記録 " + result.deleted.length + " 本を消しました（古い記録と、中の袋の記録" +
+      (theirs.size ? "、ほかの組の記録 " + theirsDeleted + " 本" : "") + "を含みます）。" + deletedTail(result), [
+      emptied(state.pair, found.house) ? houseName(found.house, state.pair) + " の箱はもうありません。" +
+        "家の範囲を外すには、名前の設定の［この家の記録を消す］を押してください。" : "",
+      othersEmptied.length ? "ほかの組（" + pairsText(othersEmptied) + "）の同じ家も箱がなくなりました。" +
+        "その組を選んで、名前の設定の［この家の記録を消す］を押してください。" : "",
+      unassignedLeft(sameBoxAsRecorded(found.top), "この箱", "記録を消す")]);
+    rebuild();
+  }
+  // Records of numbers nobody has assigned yet are never deleted: whose they are, even which shard, is not known. How many
+  // of them hold what was just deleted is said instead, so that the player assigns them and deletes again - otherwise the
+  // box or the house comes back the day they are assigned.
+  function unassignedLeft(match, what, button) {
+    const n = [...files.values()].filter(f => f.parsed.status === "ok" && pairOfBox(f.parsed.box) === null && match(f.parsed.box)).length;
+    return n ? "まだどのキャラクターか決めていない番号の記録にも、" + what + "の記録が " + n + " 本あります（消していません）。" +
+      "名前の設定で割り当ててから、もう一度［" + button + "］を押すと消せます。" : "";
+  }
+  // Which record's box, as it was read ( its own area line, not a house of a table ), is the box top: the same number - or
+  // for a locker, one a house, a locker whose area line is top's house ( sameHouseAcross ).
+  const sameBoxAsRecorded = top => (top.locker
+    ? box => !!box.locker && sameHouseAcross(box.area, top.houseArea)
+    : box => !box.locker && box.id === top.id);
+
+  // 名前の設定's この家の記録を消す: asked once, as 整理削除 asks. Once every record of the house is gone, the house
+  // leaves the pair's table and its names go with it, so that a house given that number later is not called by them.
+  // While any record is left, the house stays: pressing again deletes the rest.
+  let housePlan = null;
+  function houseAsk(h) {
+    tidyPlan = null;
+    housePlan = null;
+    boxPlan = null;
+    if (state.pair === PAIR_ALL) { showBar("tidyBar", PAIR_ONLY + "。"); return; }
+    const pair = state.pair;
+    const found = recordsOfTops(top => top.house === h, h);
+    const area = tableHouses(pair).find(t => t.n === h);
+    const where = area ? "（" + facetName(area.facet) + " X " + area.minX + "〜" + area.maxX + " / Y " + area.minY + "〜" + area.maxY + "）" : "";
+    housePlan = { pair, h, names: found.names };
+    const bar = $("tidyBar");
+    // A house with no box left ( its card in drawNameRows ) has no record to delete: only its area and names go.
+    bar.replaceChildren(houseName(h, pair) + where + (found.names.length
+      ? "の箱 " + found.tops + " 個・記録 " + found.names.length + " 本を消します。"
+      : "には、もう箱の記録がありません。") + "家の範囲と、家と階の名前" + (found.names.length ? "も" : "を") + "外します。元に戻せません。 ");
+    const go = el("button", "", "消す");
+    go.addEventListener("click", () => houseDelete());
+    const stop = el("button", "", "やめる");
+    stop.addEventListener("click", () => { housePlan = null; showBar("tidyBar", ""); });
+    bar.append(go, " ", stop);
+    bar.hidden = false;
+    measureHeader();
+  }
+  // The second press. The records are read again every five seconds: if what the house's records are now is not what
+  // was asked about, nothing is deleted.
+  async function houseDelete() {
+    if (!housePlan) return;
+    const plan = housePlan;
+    housePlan = null;
+    const now = state.pair === plan.pair ? recordsOfTops(top => top.house === plan.h, plan.h).names : null;
+    if (!now || now.length !== plan.names.length || now.some((name, i) => name !== plan.names[i])) {
+      showBar("tidyBar", "そのあいだに記録が変わったので、何も消していません。もう一度［この家の記録を消す］を押してください。");
+      return;
+    }
+    const label = houseName(plan.h, plan.pair);
+    const gone = tableHouses(plan.pair).find(t => t.n === plan.h) || null;
+    // The pair's other houses as they stand now: a house next door sharing a tile with this one is not this one come back.
+    const othersBefore = new Set(tableHouses(plan.pair).filter(t => t.n !== plan.h).map(t => t.n + " " + areaText(t)));
+    // Only this pair's house goes: another pair of the shard holding the same house in its table is told about, so that
+    // the player chooses that pair and deletes it there - each pair keeps its own numbers, names and table.
+    const sharing = gone ? sameShardPairs(plan.pair, Object.keys(names.areas).map(pairOfAssignment))
+      .filter(p => tableHouses(p).some(t => sameHouseAcross(t, gone))) : [];
+    const elsewhere = sharing.length ? "同じ家をほかの組（" + pairsText(sharing) + "）でも記録しています。その組を選んで［この家の記録を消す］をしてください。" : "";
+    showBar("tidyBar", "消しています…");
+    const result = await deleteRecords(now);
+    const unassignedHouse = gone ? unassignedLeft(box => sameHouseAcross(box.area, gone), "この家の範囲", "この家の記録を消す") : "";
+    if (result.deleted.length === now.length) {
+      forgetHouse(plan.pair, plan.h);
+      rebuild();
+      // A record still holding the area teaches the table it again ( learnHouses, in rebuild ): said as it is, not as gone.
+      const back = gone && tableHouses(plan.pair).find(t => overlaps(t, gone) && !othersBefore.has(t.n + " " + areaText(t)));
+      const did = label + (now.length ? " の記録 " + result.deleted.length + " 本を消し、" : " の");
+      showBarTodo("tidyBar", back
+        ? did + "家と階の名前を外しました。ただ、この範囲を持つ記録がまだ残っているため、家の範囲が表に戻りました（家" + back.n + "）。"
+        : did + (now.length ? "家の範囲" : "範囲") + "と、家と階の名前を外しました。", [back ? holdersLine(plan.pair, back) : GAME_CLEAR, elsewhere, unassignedHouse]);
+      return;
+    }
+    showBarTodo("tidyBar", label + " の記録 " + result.deleted.length + " 本を消しました。" + deletedTail(result) +
+      "記録が残っているので、家の範囲と名前は外していません。もう一度［この家の記録を消す］を押すと、残りを消せます。", [elsewhere, unassignedHouse]);
+    rebuild();
+  }
+  // When a house's area came back into the table ( area: the house it came back as, which learnHouses wrote from a record's
+  // area line word for word ): the boxes standing on the floor whose records hold that line - records
+  // a box in another house is shown from, which deleting the house leaves - each with how many, so that the player
+  // reopens that box ( a book read to the end ) or deletes its records, and then the house. "" when none is found.
+  function holdersLine(pair, area) {
+    const { records, reading, keyOf } = pairReading(pair);
+    const byKey = new Map(reading.boxes.map(b => [b.key, b]));
+    const counts = new Map();
+    for (const rec of records) {
+      if (!rec.parsed.box.area || areaText(rec.parsed.box.area) !== areaText(area)) continue;
+      const b = byKey.get(keyOf(rec));
+      if (b) counts.set(b.top, (counts.get(b.top) || 0) + 1);
+    }
+    const holders = [...counts].map(([top, n]) => ({ where: houseName(top.house, pair) + " の「" + boxLabel(top) + "」", n }));
+    if (!holders.length) return "";
+    const rest = "その箱を開き直す（本は最後まで読み直す）か、箱の一覧でその箱の［記録を消す］を押してから、もう一度［この家の記録を消す］を押してください。";
+    if (holders.length === 1) return "この範囲を持つ記録は、" + holders[0].where + "の古い記録です（" + holders[0].n + " 本）。" + rest;
+    return "この範囲を持つ記録は、" + holders.slice(0, 3).map(h => h.where + "（" + h.n + " 本）").join("、") +
+      (holders.length > 3 ? " ほか" : "") + "の古い記録です。" + rest;
+  }
+  // A house out of a pair's table, with its name and its floors' names.
+  function forgetHouse(pair, h) {
+    delete names.areas[nameKey(pair, h)];
+    delete names.houses[nameKey(pair, String(h))];
+    const floorsOf = nameKey(pair, h + ":");
+    for (const key of Object.keys(names.floors)) if (key.startsWith(floorsOf)) delete names.floors[key];
+    saveNamesSoon();
   }
 
   function drawUnreadable() {
@@ -1597,16 +1929,25 @@
     // without a word. An unassigned record is its own world (PAIR_UNASSIGNED), not everyone's.
     // The world is the pair while a pair is looked at, and the shard under 全部を見る (worldFor):
     // there two accounts' records of one shard's box are that one box, shown from the newest of them.
-    const combined = CPlusHomeParse.combine(records, worldFor(state.pair === PAIR_ALL));
+    const world = worldFor(state.pair === PAIR_ALL);
+    const combined = CPlusHomeParse.combine(records, world);
     boxes = combined.boxes;
     floors = combined.floors;
     boxById = new Map(boxes.map(b => [b.key, b]));
+    lastClosed = new Map();
+    for (const rec of records) {
+      const b = boxById.get(CPlusHomeParse.recordKey(world(rec), rec));
+      const closed = rec.parsed.box.closed || "";
+      if (b && closed > (lastClosed.get(b.top.key) || "")) lastClosed.set(b.top.key, closed);
+    }
     migrateBoxNames();
     learnSharedNames();
     items = combined.items;
     for (const b of boxes) if (b.book) items = items.concat(bookRows(b));
     settleSkillGroups(items.filter(it => it.book));
     for (const b of boxes) if (b.locker) items = items.concat(lockerRows(b));
+    rowsIn = new Map();
+    for (const it of items) if (it.book || it.locker) rowsIn.set(it.boxKey, (rowsIn.get(it.boxKey) || 0) + 1);
     for (const it of items) {
       it.boxRef = boxById.get(it.boxKey);
       // A scroll's row has no property lines: what it is comes from the book's own record. It is searched
@@ -1651,6 +1992,7 @@
     run();
     drawTodo();
     drawNames();
+    drawBoxList();
     if ((window.scrollY || 0) !== y) window.scrollTo(0, y);
   }
 
@@ -1845,8 +2187,11 @@
 
   function drawPairs() {
     const found = pairsWithRecords();
-    const keys = [...found.keys()].sort(collator.compare);
-    if (state.pair !== PAIR_ALL && !found.has(state.pair)) keys.push(state.pair);
+    // A pair whose records are all gone still has its houses in the table while any is left: it stays in the list, (0),
+    // so that it can be chosen and those houses taken out ( 名前の設定 shows a house with no box ).
+    const withHouses = [...new Set(Object.keys(names.areas).map(pairOfAssignment))].filter(p => tableHouses(p).length > 0);
+    const keys = [...new Set([...found.keys(), ...withHouses])].sort(collator.compare);
+    if (state.pair !== PAIR_ALL && !keys.includes(state.pair)) keys.push(state.pair);
     const select = $("pair");
     select.replaceChildren();
     const add = (value, label) => {
@@ -2055,6 +2400,7 @@
     decide.disabled = !namesLoaded;
     decide.addEventListener("click", () => {
       if (!select.value) return;
+      dropQuestions();   // which pair's records are which changes under any question asked
       names.chars[String(seen.id)] = select.value;
       saveNamesSoon();
       rebuild();
@@ -2083,6 +2429,7 @@
     const undo = el("button", "", "解除");
     undo.disabled = !namesLoaded;
     undo.addEventListener("click", () => {
+      dropQuestions();   // as 決定
       delete names.chars[String(seen.id)];
       saveNamesSoon();
       rebuild();
@@ -2147,6 +2494,10 @@
   }
   const floorWords = n => (n ? n + "階" : "階不明");
   function drawPlaces() {
+    // A house no longer offered (its boxes' records gone) is no longer chosen either, as a floor is not: a choice nobody
+    // can see would narrow the results to nothing.
+    const houses = houseList();
+    for (const h of [...state.houses]) if (!houses.includes(h)) state.houses.delete(h);
     const offered = floorsOffered();
     for (const n of [...state.floors]) if (!offered.includes(n)) state.floors.delete(n);
     const container = $("houses");
@@ -2702,7 +3053,16 @@
       body.appendChild(el("div", "lockershort", "読み切っていないロッカー（読んだ " + dash(l.read) + " 件 / " + dash(l.count) + " 件）"));
     }
     body.appendChild(chipsEl);
-    if (state.open.has(itemKey(it))) body.appendChild(detail(it));
+    if (state.open.has(itemKey(it))) {
+      body.appendChild(detail(it));
+      // Under the detail: the box standing on the floor that holds the item, in 箱の一覧.
+      const go = el("button", "", "箱の一覧で見る");
+      go.title = "この品が入っている床の箱を、箱の一覧で出します";
+      go.addEventListener("click", e => { e.stopPropagation(); showBoxInList(it.boxRef.top); });
+      const row = el("div", "detailgo");
+      row.appendChild(go);
+      body.appendChild(row);
+    }
     d.append(body);
     d.addEventListener("click", () => {
       const key = itemKey(it);
@@ -2854,9 +3214,12 @@
     drawAreaCopy();
     const grid = $("housenames");
     grid.replaceChildren();
-    for (const h of houseList()) {
+    // While a pair is looked at, a house of its table with no box left has its card too ( its range, no floors ), so that
+    // この家の記録を消す can still take it out of the table once its boxes' records are gone.
+    const empty = state.pair === PAIR_ALL ? [] : tableHouses(state.pair).map(t => t.n).filter(n => !houseList().includes(n));
+    for (const h of [...houseList(), ...empty].sort((a, b) => a - b)) {
       const p = el("div", "panel");
-      const facet = (boxes.find(b => b.top.house === h) || {}).facet;
+      const facet = (boxes.find(b => b.top.house === h) || tableHouses(housePair(h)).find(t => t.n === h) || {}).facet;
       p.appendChild(el("h2", "", "家" + h + "（世界 " + facet + "）"));
       // A house standing only in records nobody has placed yet gets no name box. A name
       // written now would be kept under「まだ決まっていない」and become unreachable the moment the
@@ -2882,6 +3245,13 @@
           nameInput("floors", nameKey(housePair(h), h + ":" + f.n), f.n + "階", namesChanged));
         p.appendChild(r);
       }
+      // For a house gone: its records, and it out of the table (houseAsk asks first).
+      const clear = el("button", "houseclear", "この家の記録を消す");
+      clear.disabled = state.pair === PAIR_ALL;
+      clear.title = state.pair === PAIR_ALL ? PAIR_ONLY : "この家の箱の記録をすべて消し、家の範囲と、家と階の名前も外します（押すと確かめます）";
+      clear.addEventListener("click", () => houseAsk(h));
+      p.appendChild(clear);
+      if (state.pair === PAIR_ALL) p.appendChild(el("div", "hint", PAIR_ONLY));
       grid.appendChild(p);
     }
     drawBoxNames();
@@ -2894,9 +3264,9 @@
     table.replaceChildren(head);
     const list = boxes.filter(b => !b.engraving && !b.locker).filter(b => !q || (b.name + b.id + houseName(b.top.house)).toLowerCase().includes(q));
     list.sort((a, b) => a.top.house - b.top.house || a.floor - b.floor || a.x - b.x || a.y - b.y);
-    for (const b of list.slice(0, 300)) {
+    for (const b of list.slice(0, BOX_ROWS_MAX)) {
       const tr = el("tr");
-      for (const v of [houseName(b.top.house) + " " + floorName(b.top.house, b.floor), b.name, b.id, b.x + "," + b.y, b.direct]) tr.appendChild(el("td", "", String(v)));
+      for (const v of [houseName(b.top.house) + " " + floorName(b.top.house, b.floor), b.name, b.id, b.x + "," + b.y, insideCount(b)]) tr.appendChild(el("td", "", String(v)));
       const cell = el("td");
       // Same as a house's: no name box until the record's number has been given to a character.
       // Under 全部を見る, a name borrowed from another pair (sharedBoxName) is in the box's placeholder,
@@ -2911,6 +3281,85 @@
     }
   }
 
+  // ---- 箱の一覧
+  // Every box standing on the floor, an engraved box, a cabinet, a book and a locker included; a bag inside one is in its
+  // 中の数. Its last record is the newest of its records and of those of every box inside it (lastClosed).
+  // A closing time ( yyyymmdd-hhmmss, the PC's clock as the game wrote it ) as a time, or null.
+  const closedAt = s => {
+    const m = /^(\d{4})(\d\d)(\d\d)-(\d\d)(\d\d)(\d\d)$/.exec(s || "");
+    return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6])).getTime() : null;
+  };
+  const longTime = s => String(s || "").replace(/^(\d{4})(\d\d)(\d\d)-(\d\d)(\d\d)\d\d$/, "$1/$2/$3 $4:$5");
+  // Whether a last record is older than STALE_DAYS, against now.
+  const isStale = (closed, now) => {
+    const at = closedAt(closed);
+    return at !== null && now - at > STALE_DAYS * DAY_MS;
+  };
+  // 中の数 in 箱の一覧 and in 名前の設定's box names: what choosing the box's kind in 検索 lists for it - a scroll book's rows
+  // and a locker's maps and SOS (rowsIn) - and for any other box the items recorded directly in it.
+  const insideCount = b => (b.book || b.locker ? rowsIn.get(b.key) || 0 : b.direct);
+  // What a box is called in the list: its name as the page calls it, with what kind of box it is when the name does not say.
+  const boxLabel = b => {
+    const shown = boxName(b);
+    return shown.includes(b.name) ? shown : shown + "（" + b.name + "）";
+  };
+  function drawBoxList() {
+    $("staleDays").textContent = String(STALE_DAYS);
+    const houses = houseList();
+    if (boxView.house !== null && !houses.includes(boxView.house)) boxView.house = null;
+    const buttons = $("boxHouses");
+    buttons.replaceChildren();
+    for (const h of [null, ...houses]) {
+      const b = el("button", boxView.house === h ? "on" : "", h === null ? "全部" : houseName(h));
+      b.addEventListener("click", () => { boxView.house = h; boxView.focus = null; drawBoxList(); });
+      buttons.appendChild(b);
+    }
+    const q = boxView.q;
+    const last = b => lastClosed.get(b.key) || b.closed || "";
+    const byPlace = (a, b) => a.house - b.house || a.floor - b.floor || a.x - b.x || a.y - b.y;
+    const list = boxes.filter(b => b === b.top && (boxView.house === null || b.house === boxView.house))
+      .filter(b => !q || [b.name, boxName(b), b.engraving || "", b.id].join(" ").toLowerCase().includes(q))
+      .sort(boxView.sort === "old" ? (a, b) => (last(a) < last(b) ? -1 : last(a) > last(b) ? 1 : 0) || byPlace(a, b) : byPlace);
+    const all = state.pair === PAIR_ALL;
+    const notes = [all ? PAIR_ONLY + "。" : "",
+      list.length > BOX_ROWS_MAX ? "ほかに " + (list.length - BOX_ROWS_MAX) + " 個あります。家を選ぶか、文字で絞ってください。" : ""].filter(Boolean);
+    $("boxListNote").textContent = notes.join(" ");
+    $("boxListNote").hidden = !notes.length;
+    const table = $("boxList");
+    const head = el("tr");
+    for (const h of ["場所（家・階）", "箱", "番号", "中の数", "最後の記録", ""]) head.appendChild(el("th", "", h));
+    table.replaceChildren(head);
+    const now = Date.now();
+    for (const b of list.slice(0, BOX_ROWS_MAX)) {
+      const label = boxLabel(b);
+      const tr = el("tr", b.key === boxView.focus ? "focus" : "");
+      tr.dataset.key = b.key;
+      for (const v of [houseName(b.house) + " " + floorName(b.house, b.floor), label, b.id, insideCount(b)]) tr.appendChild(el("td", "", String(v)));
+      const when = el("td");
+      when.appendChild(el("span", isStale(last(b), now) ? "stale" : "", longTime(last(b))));
+      const cell = el("td");
+      const go = el("button", "", "記録を消す");
+      go.disabled = all;
+      go.title = all ? PAIR_ONLY : "この箱と、中の袋の記録をすべて消します（ほかの組でも記録している箱は、確認のあとほかの組の分も消します。" +
+        "箱に付けた名前は残ります）";
+      go.addEventListener("click", () => deleteBoxRecords(b.key, label));
+      cell.appendChild(go);
+      tr.append(when, cell);
+      table.appendChild(tr);
+    }
+  }
+  // A card's 箱の一覧で見る: the list, narrowed so that the box's row is in it, with the row marked and brought into view.
+  function showBoxInList(top) {
+    boxView.house = top.house;
+    boxView.q = "";
+    $("boxListQ").value = "";
+    boxView.focus = top.key;
+    showTab("boxes", () => {
+      const row = [...$("boxList").children].find(tr => tr.dataset.key === top.key);
+      if (row) row.scrollIntoView({ block: "center" });
+    });
+  }
+
   // ---- wiring
   let typing = 0;
   const debounce = fn => { clearTimeout(typing); typing = setTimeout(fn, 150); };
@@ -2918,6 +3367,8 @@
   $("lineq").addEventListener("input", e => debounce(() => { state.lineq = e.target.value.trim().toLowerCase().split(/\s+/).filter(Boolean); state.limit = PAGE_SIZE; run(); }));
   $("sort").addEventListener("change", e => { state.sort = e.target.value; run(); });
   $("boxq").addEventListener("input", drawBoxNames);
+  $("boxListQ").addEventListener("input", e => { boxView.q = e.target.value.trim().toLowerCase(); boxView.focus = null; drawBoxList(); });
+  $("boxSort").addEventListener("change", e => { boxView.sort = e.target.value; drawBoxList(); });
   $("clear").addEventListener("click", () => {
     state.q = ""; state.lineq = [];
     $("q").value = ""; $("lineq").value = "";
@@ -2930,6 +3381,11 @@
   // The pair to look at. It is kept in the names file, so the page opens where it was left,
   // and everything is built again from the records of that pair alone.
   $("pair").addEventListener("change", e => {
+    // A question asked of the pair left ( 整理削除, 記録を消す, この家の記録を消す ) is no question about this one: dropped,
+    // and its bar closed. 箱の一覧's house is another pair's house number, so it is let go as 検索's houses are.
+    dropQuestions();
+    boxView.house = null;
+    boxView.focus = null;
     state.pair = e.target.value;
     names.view.pair = state.pair;
     saveNamesSoon();
@@ -3020,7 +3476,9 @@
     }
     tabShown = tab;
     document.querySelectorAll("nav.tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
-    for (const id of ["search", "todo", "names"]) $("tab-" + id).hidden = tab !== id;
+    for (const id of ["search", "todo", "names", "boxes"]) $("tab-" + id).hidden = tab !== id;
+    // The list's red goes by the clock: drawn again whenever it is opened.
+    if (tab === "boxes") drawBoxList();
     const place = () => {
       if (tabShown !== tab) return;   // another tab was pressed meanwhile
       if (then) then();

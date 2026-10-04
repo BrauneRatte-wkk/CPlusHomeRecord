@@ -104,6 +104,9 @@ window.cplusForm = (function () {
   .folderform .note.said { color: var(--warn); font-weight: 600; }
   button.small { padding: 2px 8px; font-size: 12px; }
   .warnbar { flex-basis: 100%; font-size: 13px; color: var(--warn); background: var(--warn-soft); border: 1px solid var(--warn); border-radius: 6px; padding: 6px 12px; overflow-wrap: anywhere; }
+  /* What the player is to do next, each on a line under the report: in the page's red, bold and a size up from the bar's
+     13px. --hit on --warn-soft: 5.06:1 light, 5.41:1 dark. */
+  .warnbar .todo { margin-top: 4px; font-size: 15px; font-weight: 700; color: var(--hit); }
   [hidden] { display: none !important; }
   button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 6px 12px; border-radius: 6px; cursor: pointer; }
   /* A button that cannot be pressed now ( 整理削除 with no older record ) looks it: pale, and no pointer. Its title says why. */
@@ -316,6 +319,15 @@ window.cplusForm = (function () {
   .rangelines div { white-space: nowrap; }
   /* The buttons that copy a pair's houses for the game, one for each pair */
   .arearow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  /* 箱の一覧: the house chosen, a box's last record when it is old (in the red the page uses for what needs the player:
+     --hit on the panel, 5.62:1 light and 6.35:1 dark, as the scroll book's count above), and the row a card was opened
+     from (on --hit-soft, where the red is 4.92:1 and 5.87:1). A house card's button that clears it stands under its range. */
+  #boxHouses button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+  #boxList .stale { color: var(--hit); font-weight: 700; }
+  #boxList tr.focus td { background: var(--hit-soft); }
+  .sortlabel { white-space: nowrap; }
+  .houseclear { margin-top: 8px; }
+  .detailgo { margin-top: 6px; }
   .empty { color: var(--sub); padding: 24px; text-align: center; }
   .jump { position: fixed; left: var(--jump-at); bottom: var(--jump-at); display: flex; flex-direction: column; gap: 6px; z-index: 10; }
   .jump button { box-shadow: 0 2px 8px var(--shadow); font-size: 13px; }
@@ -364,6 +376,7 @@ window.cplusForm = (function () {
   <button data-tab="search" class="on">検索</button>
   <button data-tab="todo">開きに行くリスト</button>
   <button data-tab="names">名前の設定</button>
+  <button data-tab="boxes">箱の一覧</button>
 </nav>
 </div>
 <main>
@@ -471,6 +484,28 @@ window.cplusForm = (function () {
       <div class="hint">同じ場所から開いた箱は位置では見分けられないので、ここで名前を付けます。刻印のある箱は刻印を使います。</div>
       <input type="text" id="boxq" placeholder="箱を探す（箱の種類・番号・家）" style="margin-top:8px">
       <div class="tablewrap"><table id="boxnames"></table></div>
+    </div>
+  </section>
+
+  <section id="tab-boxes" hidden>
+    <div class="panel">
+      <h2>箱の一覧</h2>
+      <div class="hint">床に置いた箱です（箱の中の袋は、その箱の「中の数」に入ります）。最後の記録が <span id="staleDays"></span> 日より前の箱は、日時が赤く出ます。
+        家がなくなった・ロックダウンを解除した箱の記録は、［記録を消す］で消せます。その箱と中の袋の記録をすべて消します（箱に付けた名前は残ります）。
+        同じシャードのほかの組でも記録している箱は、確認のあと、ほかの組の分も消します。
+        デイビーズのロッカーは家ごとに 1 つにまとめています。［記録を消す］を押すと、その家のロッカーの記録がすべて消えます。</div>
+      <div class="arearow" id="boxHouses"></div>
+      <div class="row" style="margin-top:8px">
+        <input type="text" id="boxListQ" placeholder="箱を探す（箱の種類・名前・刻印・番号）">
+        <label class="sortlabel">並び順
+          <select id="boxSort" style="width:auto">
+            <option value="place">場所順</option>
+            <option value="old">最後の記録が古い順</option>
+          </select>
+        </label>
+      </div>
+      <div class="hint" id="boxListNote" hidden></div>
+      <div class="tablewrap"><table id="boxList"></table></div>
     </div>
   </section>
 </main>

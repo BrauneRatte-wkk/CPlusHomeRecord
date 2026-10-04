@@ -507,6 +507,9 @@ const CPlusHomeParse = (function () {
   const lockerKey = (world, box) => boxKey(world, "locker" + NOT_HERE + (box.houseArea
     ? "area " + [box.houseArea.facet, box.houseArea.minX, box.houseArea.maxX, box.houseArea.minY, box.houseArea.maxY].join(" ")
     : "house " + box.house));
+  // The box a record is of, in a world: the key combine puts it together under. The page asks the same of a record
+  // to find every record of a box it shows (home_search.js recordsOfTops), so the two cannot group records differently.
+  const recordKey = (world, rec) => (rec.parsed.box.locker ? lockerKey(world, rec.parsed.box) : boxKey(world, rec.parsed.box.id));
 
   // Puts the readable records together. records: [{ name, mtime, parsed }] with parsed.status "ok".
   //  - A box recorded more than once is read from its newest record only; a jewel box's older records are
@@ -520,8 +523,7 @@ const CPlusHomeParse = (function () {
   //  - A Davies' locker's records are of one locker a house, whatever their box (lockerKey), and it is read
   //    from one record as a book is: lockerChosen's.
   function combine(records, world) {
-    const keyOfRecord = rec => (rec.parsed.box.locker ? lockerKey(worldOf(world, rec), rec.parsed.box)
-      : boxKey(worldOf(world, rec), rec.parsed.box.id));
+    const keyOfRecord = rec => recordKey(worldOf(world, rec), rec);
     const byBox = new Map();
     for (const rec of records) {
       const key = keyOfRecord(rec);
@@ -617,7 +619,7 @@ const CPlusHomeParse = (function () {
   }
 
   return { parseRecord, combine, newer, lockerComplete, lockerChosen, chosenOf, baseNameTid, cleanText,
-    containerCount, readArea, FORMATS, NOT_HERE, boxKey, floorKey, lockerKey };
+    containerCount, readArea, FORMATS, NOT_HERE, boxKey, floorKey, lockerKey, recordKey };
 })();
 
 if (typeof module !== "undefined") module.exports = CPlusHomeParse;
