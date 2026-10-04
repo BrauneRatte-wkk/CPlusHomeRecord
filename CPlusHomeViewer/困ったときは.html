@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>家の記録 困ったときは</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f4f6f7; --panel: #ffffff; --ink: #1d2a2e; --sub: #5b6b70; --line: #d9e1e3;
+    --accent: #1e828c; --accent-soft: #e3f2f3; --warn: #b35c00; --warn-soft: #fff1e0; --mark: #b0307a;
+    --font: "Yu Gothic UI", "Meiryo", "Hiragino Sans", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #121719; --panel: #1b2225; --ink: #e4eaec; --sub: #9aa9ae; --line: #33414a;
+      --accent: #56c1cb; --accent-soft: #163b40; --warn: #f2a453; --warn-soft: #3b2a15; --mark: #e070b0;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.75 var(--font); }
+  main { max-width: 920px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 8px 0 4px; }
+  .lead { color: var(--sub); margin: 0 0 20px; }
+  h2 { font-size: 20px; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--accent); }
+  h3 { font-size: 16px; margin: 24px 0 8px; }
+  nav.toc { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 18px; }
+  nav.toc ol { margin: 0; padding-left: 20px; }
+  nav.toc a { color: var(--accent); text-decoration: none; }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin: 12px 0; }
+  .note { background: var(--warn-soft); border: 1px solid var(--warn); border-radius: 10px; padding: 10px 16px; margin: 12px 0; }
+  .note b { color: var(--warn); }
+  ol.steps > li { margin-bottom: 10px; }
+  code, .path { font-family: Consolas, "BIZ UDGothic", monospace; font-size: 13.5px; background: var(--accent-soft); border-radius: 4px; padding: 1px 5px; overflow-wrap: anywhere; }
+  pre { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; font: 13.5px/1.6 Consolas, "BIZ UDGothic", monospace; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; background: var(--panel); }
+  th, td { text-align: left; padding: 7px 10px; border: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--accent-soft); font-weight: 600; white-space: nowrap; }
+  figure { margin: 16px 0; }
+  figure svg { width: 100%; height: auto; display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  figcaption { color: var(--sub); font-size: 13px; margin-top: 6px; }
+  svg text { fill: var(--ink); font-family: var(--font); font-size: 13px; }
+  svg .sub { fill: var(--sub); font-size: 11.5px; }
+  svg .node { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+  svg .file { fill: var(--panel); stroke: var(--sub); stroke-width: 1.2; stroke-dasharray: 4 3; }
+  svg .pc { fill: none; stroke: var(--line); stroke-width: 2; }
+  svg .arrow { stroke: var(--ink); stroke-width: 1.5; fill: none; marker-end: url(#head); }
+  svg .del { stroke: var(--warn); }
+  svg .lab { font-size: 11.5px; }
+  footer { margin-top: 48px; color: var(--sub); font-size: 13px; border-top: 1px solid var(--line); padding-top: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>家の記録 困ったときは</h1>
+  <p class="lead">「家の記録」がうまく記録しないとき、検索ページの表示がおかしいとき、チャットに見慣れない文が出たときの、「こんなとき → どうする」の一覧です。入れ方と使い方は、同じフォルダの「<a href="使い方.html">使い方</a>」を見てください。</p>
+
+  <nav class="toc" aria-label="目次">
+    <ol>
+      <li><a href="#register">家の登録と記録</a></li>
+      <li><a href="#search">検索ページ</a></li>
+      <li><a href="#move">別の PC へ移す</a></li>
+      <li><a href="#chat">チャットに出る文と対処</a></li>
+    </ol>
+  </nav>
+
+  <h2 id="register">1. 家の登録と記録</h2>
+
+  <h3>「範囲の幅が 1 マスです」と出た</h3>
+  <p>この文が出ても、家は幅 1 マスの線のまま登録されています。箱を開ける前に、「家の記録」アイコンを右クリック →「家を消す」で消して、対角の 2 か所を登録し直してください。</p>
+
+  <h3>範囲を間違えたまま箱を記録してしまった</h3>
+  <p>検索ページの「名前の設定」で、その家の［この家の記録を消す］を押します。そのあと、ゲームで右クリック →「家を消す」で消して、登録し直します。その家の記録はすべて消えるので、箱を開け直してください。</p>
+  <p>検索ページは、家の範囲を最初の記録で覚え、あとの記録では書き換えません。範囲が間違ったままだと、名前の設定の範囲と「家の範囲をゲームへ」の行も、間違った範囲になります。</p>
+
+  <h3>玄関先・ポーチ・階段の箱が記録されない</h3>
+  <p>記録するかどうかは、箱を開けたときに立っている場所で決めます。範囲の外で開いた箱は、何も言わずに記録しません。それも入るように、外側の角に立って登録し直してください。</p>
+
+  <h3>引っ越しした</h3>
+  <p>新しい場所で箱を開ける前に、検索ページで前の家の［この家の記録を消す］を押します。そのあと、ゲームで右クリック →「家を消す」→ 新しい場所の 2 か所を登録 → 箱を開け閉めします。こうすると、新しい家は前と同じ番号になります。家と階の名前は付け直してください。</p>
+  <p>先に新しい家で箱を記録してしまったときは、検索ページでの新しい家の出方で分かれます。</p>
+  <ul>
+    <li><b>新しい家が別の番号（「家2」など）で出ているとき</b>: 前の家の［この家の記録を消す］で前の家を片付けられます（新しい家の番号は変わったままです）。</li>
+    <li><b>新しい家が前の家と同じ番号で出ているとき</b>（新しい場所が前の家の場所と重なっているとき）: 前の家の箱と新しい家の箱が 1 つの家に出ています。［この家の記録を消す］を押すと新しい家の記録も消えるので、押したあとは新しい家で箱を開け直してください。前の家の箱だけを消したいときは、箱の一覧の［記録を消す］で 1 つずつ消してください。</li>
+  </ul>
+
+  <h3>自分の家でない家の箱も記録されている</h3>
+  <p>自分の家でなくても、共同所有者や友人として使う家など、登録した家なら記録します。</p>
+
+  <h3>箱を開いてから家を登録した</h3>
+  <p>その箱は記録されません。記録するかどうかは、箱を開いたときに決めます。登録してから開き直してください。</p>
+
+  <h3>階が増えた・階の名前がずれた</h3>
+  <p>階は、箱を開けたときに立っていた高さで決まります。箱は、その階の床に立って開けてください。階段の途中から開けて階が増えてしまったときは、その箱を床に立って開き直すと戻ります。</p>
+  <p>階の名前は、下から何番目の階かに付きます。下の階の箱をあとから記録すると、付けた名前が別の階へ移るので、階の名前は全部の階の箱を記録してから付けてください。</p>
+
+  <h3>キャビネットが床の箱として出ている</h3>
+  <p>宝石箱・染色キャビネット・防具強化材キャビネットは、ロックダウンして使ってください。これらは立っている場所だけで決めるので、バックパックに入れたままでも、家の範囲の中で開くと記録され、検索ページではその家の床に置いた箱として出ます。ロックダウンして家の中で開き直せば、その場所の記録が最新になります。</p>
+
+  <h2 id="search">2. 検索ページ</h2>
+
+  <h3>開きに行くリストの「要確認」に箱が出ている</h3>
+  <p>「要確認」の表には、箱の説明の「内容」の数と、記録したアイテムの数が合わない箱が出ます（宝石箱は除きます）。開いてすぐ閉じた箱などなので、開き直してください。</p>
+
+  <h3>検索のカードに［箱の一覧で見る］が見当たらない</h3>
+  <p>［箱の一覧で見る］は、検索のカードを押して開いた中にあります。押すと、その品の入っている箱へ移れます。</p>
+
+  <h3>範囲を貼ったら、家の登録が消えた・置き換わった</h3>
+  <p>「家の範囲をゲームへ」の行を「範囲を貼る」に貼ると、そのキャラクターで同じ番号に登録していた家は、貼った範囲に置き換わります。貼った範囲と重なるほかの番号の家は消え、チャットに <code>家の記録: 家 N を消しました（家 M と重なるため）</code> と出ます。貼ると、記録は ON になります。</p>
+
+  <h3>ゲームの「家 N」と検索ページの家の番号が違う</h3>
+  <p>検索ページの家の番号は、検索ページが覚えた番号です。ゲームのチャットの「家 N」と違うことがあります（別のキャラクターが別の番号で登録した、引っ越した など）。ゲームの番号を合わせたいときは、「家の範囲をゲームへ」の行を貼ってください。</p>
+
+  <h2 id="move">3. 別の PC へ移す</h2>
+  <p>記録の <code>CPlusExport</code> フォルダと <span class="path">%LOCALAPPDATA%\CPlusHomeSearch</span> の両方を写してください。写さないと、キャラクターの割り当て・家と階と箱の名前・家の範囲がなくなります。</p>
+  <p>ゲームの中の家の登録は、この 2 つには入っていません。新しい PC で家の登録が無くなっていたら、検索ページの「家の範囲をゲームへ」の行を、ゲームで「範囲を貼る」に貼れば戻せます（貼ったキャラクターごとです）。</p>
+
+  <h2 id="chat">4. チャットに出る文と対処</h2>
+  <table>
+    <tr><th>チャットの文</th><th>意味と対処</th></tr>
+    <tr><td><code>家の記録: 家 N: … / アイテム 0</code> なのに、箱に中身がある</td><td>中身が届く前に閉じたなどで、中身を読めていません。開き直してください。</td></tr>
+    <tr><td><code>… / 説明の無いアイテム N</code></td><td>説明が届く前に閉じたアイテムがあります。そのアイテムは説明の言葉では探せません。少し待ってから開き直してください。</td></tr>
+    <tr><td><code>家の記録: 家の範囲の中ですが、この箱を記録するか判定できませんでした（説明が読めません）。箱 …</code></td><td>開いたときに、箱（または箱が入っている入れ物）の説明がまだ届いていなかったので、記録するかを決められませんでした。その箱は記録していません。いったん閉じて、少し待ってから開き直してください。スクロールブックでも出ます。</td></tr>
+    <tr><td><code>家の記録: 入れ物を確かめられません: 番号 …</code></td><td>開いている宝石箱・キャビネット・スクロールブックの窓が、どの物のものか確かめられなかったので、記録しません。その物を直接ダブルクリックして開き直してください。開いてから最初のページが出るまでは、ほかのアイテムを使わないでください。この文は、同じ番号では 1 回しか出ません。</td></tr>
+    <tr><td><code>家の記録: &lt;技能&gt; / 等級の並びが前の技能と違うので、この技能は記録しません</code></td><td>スクロールブックで、その技能のページの等級の並びが、最初に開いた技能のページと違いました。その技能は記録しません（ほかの技能は記録します）。本を閉じて開き直し、その技能のページを開き直してください。</td></tr>
+    <tr><td><code>家の記録: 技能の分類を読めなかった技能が N 個あります。検索ページでは「分類なし」に出ます。</code></td><td>本は記録しています。ゲームのスキル窓の一覧から技能の分類を読めなかったので、その技能は、検索ページの技能の並びで「分類なし」の下に出ます。</td></tr>
+  </table>
+</main>
+</body>
+</html>
